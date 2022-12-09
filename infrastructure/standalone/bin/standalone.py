@@ -49,9 +49,6 @@ CONFIGMAP_FILE = PATH_STANDALONE / 'conf/env/env-vars.yaml'
 
 TMP_DIR_BASE = 'dataprofiler'
 
-DEFAULT_REGISTRY = 'ghcr.io/big-wave-tech/data-profiler'
-DEFAULT_TAG = 'latest'
-
 
 def display_failed(name: str):
     logger.error(4*' ' + f'{name:.<70}' + 'failed')
@@ -235,10 +232,10 @@ class ContainerImage:
         display_failed(self.name)
         return False
 
-    def run(self, tag) -> bool:
+    def run(self) -> bool:
         logger.debug(f'Running: {self.name}')
 
-        if not self._create(tag):
+        if not self._create():
             display_failed(self.name)
             return False
 
@@ -249,10 +246,10 @@ class ContainerImage:
         display_success(self.name)
         return True
 
-    def deploy(self, tag) -> bool:
+    def deploy(self) -> bool:
         logger.debug(f'Deploying: {self.name}')
 
-        if not self._create(tag):
+        if not self._create():
             display_failed(self.name)
             return False
 
@@ -267,7 +264,7 @@ class ContainerImage:
         display_success(self.name)
         return True
 
-    def _create(self, tag) -> bool:
+    def _create(self) -> bool:
         # Enumerate all config files in a directory
         conf_files = list(
             Path(f'{PATH_STANDALONE}/conf/{self.name}').glob('*.yaml'))
@@ -416,50 +413,50 @@ container_nodeyarn = ContainerImage(
 
 container_dp_spark_sql_controller = ContainerImage(
     'spark-sql-controller',
-    f'{DEFAULT_REGISTRY}/spark-sql-controller',
+    'data-profiler/spark-sql-controller',
     f'{PATH_DATA_PROFILER}/spark-sql/spark-sql-controller')
 
 
 # Data Profiler component
 container_dp_accumulo = ContainerImage(
     'backend',
-    f'{DEFAULT_REGISTRY}/backend',
+    'ghcr.io/big-wave-tech/data-profiler/backend',
     f'{PATH_STANDALONE}/conf/backend')
 
 container_dp_postgres = ContainerImage(
     'postgres',
-    f'{DEFAULT_REGISTRY}/postgres',
+    'data-profiler/postgres',
     f'{PATH_STANDALONE}/conf/postgres')
 
 container_dp_api = ContainerImage(
     'api',
-    f'{DEFAULT_REGISTRY}/api',
+    'ghcr.io/big-wave-tech/data-profiler/api',
     f'{PATH_DATA_PROFILER}/dp-api')
 
 container_dp_rou = ContainerImage(
     'rou',
-    f'{DEFAULT_REGISTRY}/rou',
+    'ghcr.io/big-wave-tech/data-profiler/rou',
     f'{PATH_DATA_PROFILER}/services/rules-of-use-api')
 
 container_dp_data_loading = ContainerImage(
     'data-loading-daemon',
-    f'{DEFAULT_REGISTRY}/data-loading-daemon',
+    'ghcr.io/big-wave-tech/data-profiler/data-loading-daemon',
     f'{PATH_DATA_PROFILER}/services/data-loading-daemon')
 
 container_dp_jobs_api = ContainerImage(
     'jobs-api',
-    f'{DEFAULT_REGISTRY}/jobs-api',
+    'ghcr.io/big-wave-tech/data-profiler/jobs-api',
     f'{PATH_DATA_PROFILER}/services/jobs-api')
 
 container_dp_ui = ContainerImage(
     'ui',
-    f'{DEFAULT_REGISTRY}/ui',
+    'ghcr.io/big-wave-tech/data-profiler/ui',
     f'{PATH_DATA_PROFILER}/dp-ui')
 
 # Jobs
 container_dp_rou_init = ContainerImage(
     'rou-init',
-    f'{DEFAULT_REGISTRY}/rou-init',
+    'ghcr.io/big-wave-tech/data-profiler/rou-init',
     f'{PATH_STANDALONE}/conf/rou-init')
 
 
@@ -662,22 +659,22 @@ def deploy_configmap() -> bool:
     return False
 
 
-def deploy_apps(app, tag) -> bool:
+def deploy_apps(app) -> bool:
     if app is None or app == 'all':
         success = True
         for app in deployable_apps.values():
-            if not app.deploy(tag):
+            if not app.deploy():
                 success = False
         return success
     else:
-        return deployable_apps.get(app).deploy(tag)
+        return deployable_apps.get(app).deploy()
 
 
-def execute_jobs(job, tag) -> bool:
+def execute_jobs(job) -> bool:
     if job is None or job == 'all':
         success = True
         for job in jobs.values():
-            if not job.run(tag):
+            if not job.run():
                 success = False
             return success
     else:
@@ -809,14 +806,14 @@ def deploy(args):
 
     if args.app is not None:
         logger.info('Deploying Applications')
-        if not deploy_apps(args.app, args.tag):
+        if not deploy_apps(args.app):
             logger.error(
                 "Failed to deploy apps. Re-run with --debug flag for more information")
             sys.exit(1)
 
     if args.job is not None:
         logger.info('Running Jobs')
-        if not execute_jobs(args.job, args.tag):
+        if not execute_jobs(args.job):
             logger.error(
                 "Failed to execute jobs. Re-run with --debug flag for more information")
             sys.exit(1)
@@ -925,7 +922,7 @@ def main():
         '--url',
         type=str,
         default=f'{DEFAULT_URL}:{DEFAULT_PORT}',
-        help=f'URL to access UI (Default: {DEFAULT_URL}:{DEFAULT_PORT})')
+        help=f'URL to access UI (Default: {DEFAULT_URL}:{DEFAULT_PORT})')    
     parser_build.set_defaults(func=build)
 
     # deploy
@@ -949,11 +946,6 @@ def main():
         type=int,
         default=DEFAULT_PORT,
         help=f'External port to access UI (Default: {DEFAULT_PORT})')
-    parser_deploy.add_argument(
-        '--tag',
-        type=str,
-        default=DEFAULT_REGISTRY,
-        help='docker image tag')
     parser_deploy.set_defaults(func=deploy)
 
     # terminate
@@ -990,11 +982,6 @@ def main():
         default=None,
         help='job name',
         choices=job_names())
-    parser_reload.add_argument(
-        '--tag',
-        type=str,
-        default=DEFAULT_REGISTRY,
-        help='docker image tag')
     parser_reload.set_defaults(func=reload)
 
     # status

@@ -215,6 +215,7 @@ class ContainerImage:
     def build(self) -> bool:
         build_cmd = [
             'docker',
+            'buildx',
             'build',
         ]
 

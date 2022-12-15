@@ -19,4 +19,4 @@
 #	specific language governing permissions and limitations
 #	under the License.
 #
-FROM node:12-alpine
+FROM node:16-alpine

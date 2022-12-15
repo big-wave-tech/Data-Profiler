@@ -168,7 +168,7 @@ git clone https://github.com/apache/spark.git ~/spark
 cd ~/spark
 git checkout tags/v3.3.0 -b v3.3.0-branch
 ./dev/make-distribution.sh --name k8s-spark --tgz -Dhadoop.version=3.3.4 -Dzookeeper.version=3.4.14 -Phive -Phive-thriftserver -Pkubernetes
-./bin/docker-image-tool.sh -u 0 -r big-wave-tech -t 3.3.0 -f ./dist/kubernetes/dockerfiles/spark/Dockerfile build.
+./bin/docker-image-tool.sh -u 0 -r big-wave-tech -t 3.3.0 -f ./dist/kubernetes/dockerfiles/spark/Dockerfile build
 ```
 
 After Spark has been built, the `spark-hive-thriftserver` jar needs to be copied to the Data Profiler `spark-sql-client`.

@@ -21,7 +21,8 @@
 #
 FROM ubuntu:jammy
 
-# https://www.scala-sbt.org/1.x/docs/Installing-sbt-on-Linux.html#Ubuntu+and+other+Debian-based+distributions
+ARG TARGETOS
+ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/New_York
@@ -43,10 +44,10 @@ RUN apt update && \
         cd /root && \
         sbt -version
 
-RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-11-openjdk-amd64/bin/java 1 && \
-        update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/java-11-openjdk-amd64/bin/javac 1 && \
-        update-alternatives --set javac /usr/lib/jvm/java-11-openjdk-amd64/bin/javac && \
-        update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java
+RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-11-openjdk-${TARGETARCH}/bin/java 1 && \
+        update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/java-11-openjdk-${TARGETARCH}/bin/javac 1 && \
+        update-alternatives --set javac /usr/lib/jvm/java-11-openjdk-${TARGETARCH}/bin/javac && \
+        update-alternatives --set java /usr/lib/jvm/java-11-openjdk-${TARGETARCH}/bin/java
 
 RUN apt-get remove --purge -y apt-transport-https curl gnupg && \
         apt-get autoremove -y && \

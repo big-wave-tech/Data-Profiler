@@ -39,7 +39,14 @@ ARG KIBANA_PARTIAL_URL
 ADD . /opt/app
 
 # TODO - figure out a better way to run cache/build
-RUN yarn install && yarn run bootstrap && yarn run build
+RUN apk add --no-cache --virtual build-dependencies \
+    python3 \
+    make \
+    g++
+
+RUN yarn install && \
+    yarn run bootstrap && \
+    yarn run build
 
 # Copy to runner
 FROM nginx:mainline-alpine

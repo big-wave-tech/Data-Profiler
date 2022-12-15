@@ -109,9 +109,9 @@ class TempDir:
 
 
 class ContainerImage:
-    def __init__(self, name: str, tag: str, path: str, options=None, port=-1):
+    def __init__(self, name: str, container_name: str, path: str, options=None, port=-1):
         self.name = name
-        self.tag = tag
+        self.container_name = container_name
         self.path = path
         if options is None:
             self.options = []
@@ -120,7 +120,7 @@ class ContainerImage:
         self.port = port
 
     def __str__(self):
-        return f'name: {self.name}, tag: {self.tag}, path: {self.path}, options: {self.options}, port{self.port}'
+        return f'name: {self.name}, tag: {self.container_name}, path: {self.path}, options: {self.options}, port{self.port}'
 
     def is_running(self) -> bool:
         cmd = ['kubectl',
@@ -219,7 +219,7 @@ class ContainerImage:
 
         build_cmd.extend([
             '-t',
-            self.tag,
+            self.container_name,
             self.path
         ])
 
@@ -384,6 +384,65 @@ class ContainerImage:
 
         return False
 
+    def push(self, tag: str) -> bool:
+        name = f'{self.container_name}:{tag}'
+        logger.debug(f'Push: {name}')
+
+        push_cmd = [
+            'docker',
+            'push',
+            name
+        ]
+
+        (proc, _, _) = exec_cmd(push_cmd)
+
+        if proc.returncode == 0:
+            display_success(self.name)
+            return True
+
+        display_failed(self.name)
+        return False
+
+    def pull(self, tag: str) -> bool:
+        name = f'{self.container_name}:{tag}'
+        logger.debug(f'Pulling: {name}')
+
+        pull_cmd = [
+            'docker',
+            'pull',
+            name
+        ]
+
+        (proc, _, _) = exec_cmd(pull_cmd)
+
+        if proc.returncode == 0:
+            display_success(self.name)
+            return True
+
+        display_failed(self.name)
+        return False
+
+    def tag(self, tag: str) -> bool:
+        curr_name = f'{self.container_name}:latest'
+        new_name = f'{self.container_name}:{tag}'
+        logger.debug(f'Tagging: {self.container_name} with {tag}')
+
+        tag_cmd = [
+            'docker',
+            'tag',
+            curr_name,
+            new_name
+        ]
+
+        (proc, _, _) = exec_cmd(tag_cmd)
+
+        if proc.returncode == 0:
+            display_success(self.name)
+            return True
+
+        display_failed(self.name)
+        return False
+
 
 # Dependencies
 container_java = ContainerImage(
@@ -491,6 +550,8 @@ jobs = {
     container_dp_rou_init.name: container_dp_rou_init,
 }
 
+# Images that can be checked into a container registry
+registry_apps = {**buildable_apps, **jobs}
 
 logger = logging.getLogger("standalone")
 
@@ -707,6 +768,41 @@ def terminate_jobs(job) -> bool:
         return jobs.get(job).terminate_job()
 
 
+def push_apps(app, tag) -> bool:
+    if app is None or app == 'all':
+        success = True
+        for app in registry_apps.values():
+            if not app.push(tag):
+                success = False
+        return success
+    else:
+        return registry_apps.get(app).push(tag)
+
+
+def pull_apps(app, tag) -> bool:
+    if app is None or app == 'all':
+        success = True
+        for app in registry_apps.values():
+            if not app.pull(tag):
+                success = False
+        return success
+    else:
+        return registry_apps.get(app).pull(tag)
+
+
+def tag_apps(app, tag) -> bool:
+    if app is None or app == 'all':
+        success = True
+        for app in registry_apps.values():
+            print(app)
+            print(tag)
+            if not app.tag(tag):
+                success = False
+        return success
+    else:
+        return registry_apps.get(app).tag(tag)
+
+
 def exec_cmd(cmd, cwd=PATH_STANDALONE, show_output=True) -> Tuple[subprocess.Popen, str, str]:
     logger.debug(f'Executing command: {" ".join(cmd)}')
     try:
@@ -847,6 +943,27 @@ def reload(args):
     deploy(args)
 
 
+def push(args):
+    if args.app is None:
+        args.app = 'all'
+
+    push_apps(args.app, args.tag)
+
+
+def pull(args):
+    if args.app is None:
+        args.app = 'all'
+
+    pull_apps(args.app, args.tag)
+
+
+def tag(args):
+    if args.app is None:
+        args.app = 'all'
+
+    tag_apps(args.app, args.tag)
+
+
 def status(args=None):
     logger.info('Status')
 
@@ -922,7 +1039,7 @@ def main():
         '--url',
         type=str,
         default=f'{DEFAULT_URL}:{DEFAULT_PORT}',
-        help=f'URL to access UI (Default: {DEFAULT_URL}:{DEFAULT_PORT})')    
+        help=f'URL to access UI (Default: {DEFAULT_URL}:{DEFAULT_PORT})')
     parser_build.set_defaults(func=build)
 
     # deploy
@@ -983,6 +1100,55 @@ def main():
         help='job name',
         choices=job_names())
     parser_reload.set_defaults(func=reload)
+
+    parser_push = subparsers.add_parser(
+        'push',
+        help='Push containers to a registry',
+        allow_abbrev=True)
+    parser_push.add_argument(
+        'tag',
+        type=str,
+        help='tag name')
+    parser_push.add_argument(
+        '--app',
+        type=str,
+        default=None,
+        help='app name',
+        choices=deployable_app_names())
+    parser_push.set_defaults(func=push)
+
+    parser_pull = subparsers.add_parser(
+        'pull',
+        help='Pull containers from a registry',
+        allow_abbrev=True)
+    parser_pull.add_argument(
+        '--tag',
+        type=str,
+        default='latest',
+        help='tag name; default is "latest"')
+    parser_pull.add_argument(
+        '--app',
+        type=str,
+        default=None,
+        help='app name',
+        choices=deployable_app_names())
+    parser_pull.set_defaults(func=pull)
+
+    parser_tag = subparsers.add_parser(
+        'tag',
+        help='Tag images',
+        allow_abbrev=True)
+    parser_tag.add_argument(
+        'tag',
+        type=str,
+        help='tag name')
+    parser_tag.add_argument(
+        '--app',
+        type=str,
+        default=None,
+        help='app name',
+        choices=deployable_app_names())
+    parser_tag.set_defaults(func=tag)
 
     # status
     parser_status = subparsers.add_parser(

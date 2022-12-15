@@ -19,7 +19,7 @@
 #	specific language governing permissions and limitations
 #	under the License.
 #
-FROM data-profiler/nodepg:latest
+FROM ghcr.io/big-wave-tech/data-profiler/nodepg:latest
 
 RUN apt-get update && apt-get install -y netcat && rm -rf /var/lib/apt/lists/*
 

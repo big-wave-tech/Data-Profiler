@@ -19,7 +19,7 @@
 #	specific language governing permissions and limitations
 #	under the License.
 #
-FROM data-profiler/nodeyarn:latest AS builder
+FROM ghcr.io/big-wave-tech/data-profiler/nodeyarn:latest AS builder
 
 EXPOSE 80
 WORKDIR /opt/app

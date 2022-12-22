@@ -10,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Add Environment Variables During Yarn Build
     steps:
+    - uses: CultureHQ/actions-yarn@v1.0.1
     - name: Yarn Add
       run: yarn add
-      with:
-        args:
           -- CLUSTER_NAME
           - -- SENTRY_UI_DSN
           - -- SENTRY_UI_RELEASE_API_TOKEN

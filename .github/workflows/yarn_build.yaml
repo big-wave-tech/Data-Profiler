@@ -11,7 +11,7 @@ jobs:
     name: Add Environment Variables During Yarn Build
     steps:
     - name: Yarn install
-      run: yarn add
+      run: yarn install
     - name: Yarn Build
       id: yarnbuild
       uses: CultureHQ/actions-yarn@v1.0.1

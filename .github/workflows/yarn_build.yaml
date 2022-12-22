@@ -11,8 +11,7 @@ jobs:
     name: Add Environment Variables During Yarn Build
     steps:
     - name: Yarn Add
-      id: yarnadd
-      uses: CultureHQ/actions-yarn@v1.0.1
+      run: yarn add
       with:
         args:
           -- CLUSTER_NAME

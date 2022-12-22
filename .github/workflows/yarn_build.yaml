@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: CultureHQ/actions-yarn@v1.0.1
     - name: Yarn Add
-      run: yarn add --install.no-lockfile true
+      run: yarn add --no-lockfile
           -- ${CLUSTER_NAME}
           -- SENTRY_UI_DSN
           -- SENTRY_UI_RELEASE_API_TOKEN

@@ -13,7 +13,7 @@ jobs:
     - uses: CultureHQ/actions-yarn@v1.0.1
     - name: Yarn Add
       run: yarn add --install.no-lockfile true
-          -- CLUSTER_NAME
+          -- ${CLUSTER_NAME}
           -- SENTRY_UI_DSN
           -- SENTRY_UI_RELEASE_API_TOKEN
           -- USER_FACING_API_HTTP_PATH

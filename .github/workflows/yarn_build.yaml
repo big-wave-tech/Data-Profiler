@@ -11,7 +11,7 @@ jobs:
     name: Add Environment Variables During Yarn Build
     steps:
     - uses: comchangs/action-yarn@e4a1f4800849aa2e73dbc77d872a3c011cdc28d5
-    - uses: comchangs/action-yarn@v0.1-beta
+    # - uses: comchangs/action-yarn@v0.1-beta
     - name: Yarn Install
       run: yarn install
     - name: Yarn Build

@@ -10,7 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Add Environment Variables During Yarn Build
     steps:
-    - uses: CultureHQ/actions-yarn@v1.0.1
+    - uses: comchangs/action-yarn@e4a1f4800849aa2e73dbc77d872a3c011cdc28d5
+    - uses: comchangs/action-yarn@v0.1-beta
+    - name: Yarn Install
+      run: yarn install
       with: 
         args:     
           -- CLUSTER_NAME
@@ -23,8 +26,6 @@ jobs:
           -- ANALYTICS_UI_SITE_ID
           -- USE_ALTERNATE_AUTH
           -- KIBANA_PARTIAL_URL
-    - name: Yarn Install
-      run: yarn install
       
     - name: Yarn Build
       run: yarn build

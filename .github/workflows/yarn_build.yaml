@@ -16,3 +16,11 @@ jobs:
       run: yarn install
     - name: Yarn Build
       run: yarn build
+
+  teardown_build_setup:
+    runs-on: ubuntu-latest
+    name: Tear Down Yarn Set-Up
+    steps:
+    - uses: comchangs/action-yarn@master
+      with:
+        args: cd exitcode-frontend; yarn install; yarn ng build

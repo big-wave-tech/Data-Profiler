@@ -49,8 +49,7 @@ public class AuthenticationAction extends Action<Authenticated> {
   private final String CURRENT_ATTRIBUTES_HEADER = "X-Current-Attributes";
   private final String ATTRIBUTES_TO_REJECT_HEADER = "X-Attributes-To-Reject";
   private final String AUTHENTICATED_VIA_HEADER = "X-Authenticated-Via";
-  private final String SPECIAL_ATTRIBUTES_HEADER =
-    "X-Special-Attributes-To-Apply";
+  private final String SPECIAL_ATTRIBUTES_HEADER = "X-Special-Attributes-To-Apply";
   private final String AUTHENTICATED_VIA_STATIC_API_TOKEN = "static-api-token";
   private final String MSG_NOT_ON_WHITELIST = "";
   private final String MSG_UNAUTHORIZED = "Unauthorized";
@@ -82,7 +81,14 @@ public class AuthenticationAction extends Action<Authenticated> {
    * This is the main call for every request
    */
   public CompletionStage<Result> call(Http.Request req) {
-    return prepareCall(req);
+    long startTime = System.nanoTime();
+    CompletionStage<Result> results = prepareCall(req);
+    long endTime = System.nanoTime();
+    logger.info(
+        "Authentication time: {} ms",
+        (endTime - startTime) / 1000000);
+    return results;
+
   }
 
   public CompletionStage<Result> prepareCall(Http.Request req) {
@@ -96,23 +102,18 @@ public class AuthenticationAction extends Action<Authenticated> {
 
   public void initialize() {
     try {
-      dpContext =
-        new com.dataprofiler.util.Context(
-          DataprofilerConfigAdaptor.fromPlayConfigruation(config)
-        );
+      dpContext = new com.dataprofiler.util.Context(
+          DataprofilerConfigAdaptor.fromPlayConfigruation(config));
       dpContext.refreshAuthorizations();
     } catch (BasicAccumuloException e) {
       logger.error(e.toString());
     }
     isUsingApiKey = false;
     authMethod = config.getString("auth.method");
-    requireLoginAttributeForAccess =
-      Boolean.valueOf(config.getString("auth.requireLoginAttributeForAccess"));
-    rulesOfUseHelper =
-      new RulesOfUseHelper(
+    requireLoginAttributeForAccess = Boolean.valueOf(config.getString("auth.requireLoginAttributeForAccess"));
+    rulesOfUseHelper = new RulesOfUseHelper(
         config.getString("rulesOfUse.baseApi"),
-        config.getString("rulesOfUse.apiKey")
-      );
+        config.getString("rulesOfUse.apiKey"));
     String authorizationEndpoint;
     String tokenEndpoint;
     String userInfoEndpoint;
@@ -128,16 +129,14 @@ public class AuthenticationAction extends Action<Authenticated> {
         oAuthClientId = config.getString("oAuthClientId");
         oAuthClientSecret = config.getString("oAuthClientSecret");
         oAuthScope = config.getString("oAuthScope");
-        oAuthHelper =
-          new OAuthHelper(
+        oAuthHelper = new OAuthHelper(
             authorizationEndpoint,
             tokenEndpoint,
             userInfoEndpoint,
             oAuthClientId,
             oAuthClientSecret,
             oAuthScope,
-            null
-          );
+            null);
         break;
       case LOCAL_DEVELOPER:
         break;
@@ -148,25 +147,20 @@ public class AuthenticationAction extends Action<Authenticated> {
 
   public void setRequestHeaders() {
     requestHeaders.put(
-      API_TOKEN_HEADER,
-      req.header(API_TOKEN_HEADER).orElse(null)
-    );
+        API_TOKEN_HEADER,
+        req.header(API_TOKEN_HEADER).orElse(null));
     requestHeaders.put(
-      AUTH_TOKEN_HEADER,
-      req.header(AUTH_TOKEN_HEADER).orElse(null)
-    );
+        AUTH_TOKEN_HEADER,
+        req.header(AUTH_TOKEN_HEADER).orElse(null));
     requestHeaders.put(
-      USERNAME_HEADER,
-      req.header(USERNAME_HEADER).orElse(null)
-    );
+        USERNAME_HEADER,
+        req.header(USERNAME_HEADER).orElse(null));
     requestHeaders.put(
-      SPECIAL_ATTRIBUTES_HEADER,
-      req.header(SPECIAL_ATTRIBUTES_HEADER).orElse(null)
-    );
+        SPECIAL_ATTRIBUTES_HEADER,
+        req.header(SPECIAL_ATTRIBUTES_HEADER).orElse(null));
     requestHeaders.put(
-      ATTRIBUTES_TO_REJECT_HEADER,
-      req.header(ATTRIBUTES_TO_REJECT_HEADER).orElse(null)
-    );
+        ATTRIBUTES_TO_REJECT_HEADER,
+        req.header(ATTRIBUTES_TO_REJECT_HEADER).orElse(null));
     requestHeaders.values().removeIf(Objects::isNull);
     logger.debug("set request headers: " + requestHeaders.keySet());
     if (requestHeaders.get(API_TOKEN_HEADER) != null) {
@@ -179,25 +173,21 @@ public class AuthenticationAction extends Action<Authenticated> {
       res = res.withHeader(USERNAME_HEADER, username);
     }
     String via = isUsingApiKey
-      ? AUTHENTICATED_VIA_STATIC_API_TOKEN
-      : authMethod;
+        ? AUTHENTICATED_VIA_STATIC_API_TOKEN
+        : authMethod;
     if (via != null) {
       res = res.withHeader(AUTHENTICATED_VIA_HEADER, via);
     }
     if (requestHeaders.get(AUTH_TOKEN_HEADER) != null) {
-      res =
-        res.withHeader(
+      res = res.withHeader(
           AUTH_TOKEN_HEADER,
-          requestHeaders.get(AUTH_TOKEN_HEADER)
-        );
+          requestHeaders.get(AUTH_TOKEN_HEADER));
     }
-    res =
-      res
+    res = res
         .withHeader(ASSIGNED_ATTRIBUTES_HEADER, rouAttributes.allAsJSONString())
         .withHeader(
-          CURRENT_ATTRIBUTES_HEADER,
-          rouAttributes.currentAsJSONString()
-        );
+            CURRENT_ATTRIBUTES_HEADER,
+            rouAttributes.currentAsJSONString());
 
     return res;
   }
@@ -212,8 +202,7 @@ public class AuthenticationAction extends Action<Authenticated> {
       username = requestHeaders.get(USERNAME_HEADER);
       authedUsername = authenticateWebUser();
       logger.debug(
-        "using user name header to authenticate web user: " + authedUsername
-      );
+          "using user name header to authenticate web user: " + authedUsername);
     }
     username = authedUsername;
   }
@@ -228,48 +217,38 @@ public class AuthenticationAction extends Action<Authenticated> {
         rouAttributes = rulesOfUseHelper.getUserAttributes(username);
       }
       logger.debug(
-        "fetched user: " +
-        username +
-        " attributes: " +
-        rouAttributes.getAllVisibilities()
-      );
+          "fetched user: " +
+              username +
+              " attributes: " +
+              rouAttributes.getAllVisibilities());
       rouAttributes.setSpecialVisibilitiesToAdd(
-        requestHeaders.get(SPECIAL_ATTRIBUTES_HEADER)
-      );
+          requestHeaders.get(SPECIAL_ATTRIBUTES_HEADER));
       rouAttributes.setVisibilitiesToReject(
-        requestHeaders.get(ATTRIBUTES_TO_REJECT_HEADER)
-      );
+          requestHeaders.get(ATTRIBUTES_TO_REJECT_HEADER));
       logger.debug(
-        "rouAttributes.setVisibilitiesToReject: " +
-        rouAttributes.getVisibilitiesToReject()
-      );
+          "rouAttributes.setVisibilitiesToReject: " +
+              rouAttributes.getVisibilitiesToReject());
       logger.debug(
-        "requireLoginAttributeForAccess: " +
-        requireLoginAttributeForAccess +
-        " hasLoginAttribute: " +
-        rouAttributes.hasLoginAttribute()
-      );
-      if (
-        requireLoginAttributeForAccess &&
-        rouAttributes.hasLoginAttribute() == false
-      ) {
+          "requireLoginAttributeForAccess: " +
+              requireLoginAttributeForAccess +
+              " hasLoginAttribute: " +
+              rouAttributes.hasLoginAttribute());
+      if (requireLoginAttributeForAccess &&
+          rouAttributes.hasLoginAttribute() == false) {
         logger.debug(
-          "user: " + username + " is not on the whitelist, returning forbidden"
-        );
+            "user: " + username + " is not on the whitelist, returning forbidden");
         Result forbidden = Results.forbidden(Json.toJson(MSG_NOT_ON_WHITELIST));
         return CompletableFuture.completedFuture(forbidden);
       }
 
       logger.debug(
-        "setting request key: " +
-        RulesOfUseHelper.ROU_ATTRIBUTES_TYPED_KEY +
-        " for user: " +
-        username +
-        " attributes: " +
-        rouAttributes.getAllVisibilities()
-      );
-      req =
-        req.addAttr(RulesOfUseHelper.ROU_ATTRIBUTES_TYPED_KEY, rouAttributes);
+          "setting request key: " +
+              RulesOfUseHelper.ROU_ATTRIBUTES_TYPED_KEY +
+              " for user: " +
+              username +
+              " attributes: " +
+              rouAttributes.getAllVisibilities());
+      req = req.addAttr(RulesOfUseHelper.ROU_ATTRIBUTES_TYPED_KEY, rouAttributes);
       return delegate.call(req).thenApply(result -> setResponseHeaders(result));
     } else {
       logger.debug("finishAuthentication user is null! returning unauthorized");
@@ -282,8 +261,7 @@ public class AuthenticationAction extends Action<Authenticated> {
     String token = requestHeaders.get(API_TOKEN_HEADER);
     if (dpContext == null) {
       logger.error(
-        "Could not validate API token because there was no connection to Accumulo"
-      );
+          "Could not validate API token because there was no connection to Accumulo");
       return null;
     }
     logger.debug("authenticateApiKey with token: " + token);
@@ -307,17 +285,15 @@ public class AuthenticationAction extends Action<Authenticated> {
       return localDeveloperGetUsername(token);
     } else {
       Boolean positiveTokenResponse = rulesOfUseHelper.checkTokenAuthenticatedFromRou(
-        this.username,
-        token
-      );
+          this.username,
+          token);
       logger.debug(
-        "authenticateWebUser with user: " +
-        username +
-        " token: " +
-        token +
-        " positiveTokenResponse: " +
-        positiveTokenResponse
-      );
+          "authenticateWebUser with user: " +
+              username +
+              " token: " +
+              token +
+              " positiveTokenResponse: " +
+              positiveTokenResponse);
       return (positiveTokenResponse ? username : null);
     }
   }
@@ -327,8 +303,8 @@ public class AuthenticationAction extends Action<Authenticated> {
     Boolean runningLocally = url.startsWith("http://localhost");
     Boolean tokenIsLocalDeveloper = token.equals(LOCAL_DEVELOPER);
     String username = runningLocally && tokenIsLocalDeveloper
-      ? "developer"
-      : null;
+        ? "developer"
+        : null;
     return username;
   }
 }

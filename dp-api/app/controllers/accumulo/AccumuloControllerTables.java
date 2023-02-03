@@ -1,6 +1,6 @@
 /**
 *  Copyright 2021 Merck & Co., Inc. Kenilworth, NJ, USA.
-* 
+*
 * 	Licensed to the Apache Software Foundation (ASF) under one
 * 	or more contributor license agreements. See the NOTICE file
 * 	distributed with this work for additional information
@@ -8,10 +8,10 @@
 * 	to you under the Apache License, Version 2.0 (the
 * 	"License"); you may not use this file except in compliance
 * 	with the License. You may obtain a copy of the License at
-* 
+*
 * 	http://www.apache.org/licenses/LICENSE-2.0
-* 
-* 
+*
+*
 * 	Unless required by applicable law or agreed to in writing,
 * 	software distributed under the License is distributed on an
 * 	"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -66,30 +66,28 @@ public class AccumuloControllerTables extends Controller {
   private List<Map<String, String>> iteratorToMap(
       ClosableIterator<VersionedMetadataObject> iter, final DataScanSpec spec) throws Exception {
     // check for field match, ignore on null or empty
-    BiFunction<String, String, Boolean> isFieldMatch =
-        (a, b) -> {
-          boolean aIsDefined = a != null && !a.isEmpty();
-          return aIsDefined ? a.trim().equalsIgnoreCase(b != null ? b.trim() : "") : Boolean.TRUE;
-        };
+    BiFunction<String, String, Boolean> isFieldMatch = (a, b) -> {
+      boolean aIsDefined = a != null && !a.isEmpty();
+      return aIsDefined ? a.trim().equalsIgnoreCase(b != null ? b.trim() : "") : Boolean.TRUE;
+    };
     // does the spec match or are the spec filters null; then return true
-    BiFunction<DataScanSpec, VersionedMetadataObject, Boolean> isSpecEmptyOrMatch =
-        (datascanSpec, metadataObject) -> {
-          String dataset = datascanSpec.getDataset();
-          String table = datascanSpec.getTable();
-          String column = datascanSpec.getColumn();
-          if (dataset != null && table != null && column != null) {
-            return isFieldMatch.apply(dataset, metadataObject.dataset_name)
-                && isFieldMatch.apply(table, metadataObject.table_name)
-                && isFieldMatch.apply(column, metadataObject.column_name);
-          } else if (dataset != null && table != null) {
-            return isFieldMatch.apply(dataset, metadataObject.dataset_name)
-                && isFieldMatch.apply(table, metadataObject.table_name);
-          } else if (dataset != null) {
-            return isFieldMatch.apply(dataset, metadataObject.dataset_name);
-          } else {
-            return Boolean.TRUE;
-          }
-        };
+    BiFunction<DataScanSpec, VersionedMetadataObject, Boolean> isSpecEmptyOrMatch = (datascanSpec, metadataObject) -> {
+      String dataset = datascanSpec.getDataset();
+      String table = datascanSpec.getTable();
+      String column = datascanSpec.getColumn();
+      if (dataset != null && table != null && column != null) {
+        return isFieldMatch.apply(dataset, metadataObject.dataset_name)
+            && isFieldMatch.apply(table, metadataObject.table_name)
+            && isFieldMatch.apply(column, metadataObject.column_name);
+      } else if (dataset != null && table != null) {
+        return isFieldMatch.apply(dataset, metadataObject.dataset_name)
+            && isFieldMatch.apply(table, metadataObject.table_name);
+      } else if (dataset != null) {
+        return isFieldMatch.apply(dataset, metadataObject.dataset_name);
+      } else {
+        return Boolean.TRUE;
+      }
+    };
     List<Map<String, String>> results = new ArrayList<>();
     int limit = spec.getLimit();
     while (iter.hasNext()) {
@@ -123,16 +121,21 @@ public class AccumuloControllerTables extends Controller {
     Boolean startsWith = spec.getBegins_with();
     List<String> terms = spec.getTerm().stream().map(String::toLowerCase).collect(toList());
     List<Map<String, String>> results = new ArrayList<>();
-    try (ClosableIterator<VersionedMetadataObject> iter =
-        new VersionedMetadataObject()
-            .searchTableNames(context, context.getCurrentMetadataVersion(), terms, startsWith)
-            .setBatch(true)
-            .closeableIterator()) {
+    long startTime = System.nanoTime();
+    try (ClosableIterator<VersionedMetadataObject> iter = new VersionedMetadataObject()
+        .searchTableNames(context, context.getCurrentMetadataVersion(), terms, startsWith)
+        .setBatch(true)
+        .closeableIterator()) {
       results = this.iteratorToMap(iter, spec);
     } catch (Exception e) {
       e.printStackTrace();
       return internalServerError();
     }
+    long endTime = System.nanoTime();
+    logger.info(
+        "searchTableNames: {} results in {} ms",
+        results.size(),
+        (endTime - startTime) / 1000000);
     return ok(Json.toJson(results));
   }
 }

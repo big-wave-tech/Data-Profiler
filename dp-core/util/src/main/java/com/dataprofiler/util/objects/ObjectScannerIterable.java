@@ -29,7 +29,10 @@ package com.dataprofiler.util.objects;
 import com.dataprofiler.util.BasicAccumuloException;
 import com.dataprofiler.util.Const;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ClosableIterator;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
+import com.dataprofiler.util.objects.iterators.MultiRangeScannerIterator;
+import com.dataprofiler.util.objects.iterators.ObjectScannerIterator;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;

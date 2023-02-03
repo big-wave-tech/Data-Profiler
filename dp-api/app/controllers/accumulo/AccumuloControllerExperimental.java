@@ -1,6 +1,6 @@
 /**
 *  Copyright 2021 Merck & Co., Inc. Kenilworth, NJ, USA.
-* 
+*
 * 	Licensed to the Apache Software Foundation (ASF) under one
 * 	or more contributor license agreements. See the NOTICE file
 * 	distributed with this work for additional information
@@ -8,10 +8,10 @@
 * 	to you under the Apache License, Version 2.0 (the
 * 	"License"); you may not use this file except in compliance
 * 	with the License. You may obtain a copy of the License at
-* 
+*
 * 	http://www.apache.org/licenses/LICENSE-2.0
-* 
-* 
+*
+*
 * 	Unless required by applicable law or agreed to in writing,
 * 	software distributed under the License is distributed on an
 * 	"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.dataprofiler.querylang.json.Expressions;
 import com.dataprofiler.util.Const.SortOrder;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ClosableIterator;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
 import com.dataprofiler.util.objects.MetadataVersionObject;
 import com.dataprofiler.util.objects.VersionedMetadataObject;
 import com.dataprofiler.util.objects.ColumnCountObject;
@@ -87,18 +87,16 @@ public class AccumuloControllerExperimental extends Controller {
       String tableName,
       String columnName,
       int limit)
-    throws Exception {
+      throws Exception {
 
-    VersionedMetadataObject metaColA =
-      new VersionedMetadataObject()
-          .fetchColumn(context, version, datasetname, tableName, columnName);
+    VersionedMetadataObject metaColA = new VersionedMetadataObject()
+        .fetchColumn(context, version, datasetname, tableName, columnName);
 
     Map<String, Long> colCounts = new HashMap<>();
 
-    try (ClosableIterator<ColumnCountObject> iter =
-      new ColumnCountObject()
-          .fetchColumn(context, metaColA, SortOrder.CNT_DESC)
-          .closeableIterator()) {
+    try (ClosableIterator<ColumnCountObject> iter = new ColumnCountObject()
+        .fetchColumn(context, metaColA, SortOrder.CNT_DESC)
+        .closeableIterator()) {
 
       for (int i = 0; iter.hasNext() && i < limit; i++) {
         ColumnCountObject currCol = iter.next();
@@ -116,13 +114,12 @@ public class AccumuloControllerExperimental extends Controller {
       String columnName,
       List<String> terms,
       int limit)
-    throws Exception {
+      throws Exception {
 
     DataScanSpec spec = new DataScanSpec(datasetname, tableName);
 
     // Only query data that will be used on the join
-    List<JsonNode> columns =
-      terms.stream().map(val -> DataScanSpec.v2EqClause(columnName, val)).collect(toList());
+    List<JsonNode> columns = terms.stream().map(val -> DataScanSpec.v2EqClause(columnName, val)).collect(toList());
 
     JsonNode query = DataScanSpec.v2AndOrGroup("$or", columns);
     spec.setV2Query(Expressions.parse(mapper.writeValueAsString(query)));
@@ -131,8 +128,8 @@ public class AccumuloControllerExperimental extends Controller {
 
     Map<String, List<Map<String, String>>> result = new HashMap<>();
 
-    try (ClosableIterator<DatawaveRowObject> iter =
-      new DatawaveRowObject().find(context, versionedSpec).closeableIterator()) {
+    try (ClosableIterator<DatawaveRowObject> iter = new DatawaveRowObject().find(context, versionedSpec)
+        .closeableIterator()) {
 
       for (int i = 0; iter.hasNext() && i < limit; i++) {
         Map<String, String> currRow = iter.next().getRow();
@@ -158,15 +155,15 @@ public class AccumuloControllerExperimental extends Controller {
   public Result joinStats(Request req) throws Exception {
     String json = req.body().asText();
     JsonNode jsonRes = mapper.readTree(json);
-  
+
     String datasetA = jsonRes.get("dataset_a").asText();
     String tableA = jsonRes.get("table_a").asText();
     String colA = jsonRes.get("col_a").asText();
-  
+
     String datasetB = jsonRes.get("dataset_b").asText();
     String tableB = jsonRes.get("table_b").asText();
     String colB = jsonRes.get("col_b").asText();
-  
+
     if (datasetA == null
         || datasetA.isEmpty()
         || tableA == null
@@ -181,32 +178,32 @@ public class AccumuloControllerExperimental extends Controller {
         || colB.isEmpty()) {
       return badRequest("dataset, table, and column required for join");
     }
-  
+
     int limit = jsonRes.get("limit") == null ? 1000 : jsonRes.get("limit").asInt();
-  
+
     Context context = (Context) req.attrs().get(RulesOfUseHelper.USER_CONTEXT_TYPED_KEY);
     MetadataVersionObject version = context.getCurrentMetadataVersion();
-  
+
     // Get column counts for both tables
     Map<String, Long> cntsColA = getColCounts(context, version, datasetA, tableA, colA, limit);
     Map<String, Long> cntsColB = getColCounts(context, version, datasetB, tableB, colB, limit);
-  
+
     // Find intersection
     Map<String, Long> matchTermCnt = new HashMap<>();
-  
+
     for (String currKey : cntsColA.keySet()) {
       if (cntsColB.containsKey(currKey)) {
         matchTermCnt.put(currKey, cntsColA.get(currKey) * cntsColB.get(currKey));
       }
     }
-  
+
     JoinObject result = new JoinObject();
-  
+
     // Get number of rows
     long numMatches = matchTermCnt.values().stream().mapToLong(Long::longValue).sum();
-  
+
     if (numMatches > 0) {
-  
+
       // Limit the matching terms so the join does not exceed limit
       List<String> terms = new ArrayList<>();
       int cnt = 0;
@@ -217,12 +214,12 @@ public class AccumuloControllerExperimental extends Controller {
           break;
         }
       }
-  
+
       // Get rows for both tables
-      Map<String, List<Map<String, String>>> rowsA =
-          getRowsGroupedByValue(context, datasetA, tableA, colA, terms, limit);
-      Map<String, List<Map<String, String>>> rowsB =
-          getRowsGroupedByValue(context, datasetB, tableB, colB, terms, limit);
+      Map<String, List<Map<String, String>>> rowsA = getRowsGroupedByValue(context, datasetA, tableA, colA, terms,
+          limit);
+      Map<String, List<Map<String, String>>> rowsB = getRowsGroupedByValue(context, datasetB, tableB, colB, terms,
+          limit);
 
       for (String currVal : rowsA.keySet()) {
         for (Map<String, String> rowA : rowsA.get(currVal)) {
@@ -232,16 +229,16 @@ public class AccumuloControllerExperimental extends Controller {
           }
         }
       }
-  
+
       Map<String, Object> metadata = new HashMap<>();
       metadata.put("num_rows", numMatches);
       metadata.put("column_names", result.getSample().get(0).keySet());
       metadata.put("num_columns", result.getSample().get(0).keySet().size());
       metadata.put("value_matches", matchTermCnt);
-  
+
       result.setMeta(metadata);
     }
-  
+
     return ok(Json.toJson(result));
   }
 }

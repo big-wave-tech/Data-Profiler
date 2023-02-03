@@ -29,8 +29,9 @@ package com.dataprofiler.util.objects;
 import com.dataprofiler.util.BasicAccumuloException;
 import com.dataprofiler.util.Const;
 import com.dataprofiler.util.Const.SortOrder;
+import com.dataprofiler.util.objects.iterators.ColumnCountVisibilityIterator;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ColumnCountVisibilityIterator;
+
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,8 +56,8 @@ public class ColumnCountPaginationObject
   private static final String accumuloTable = Const.ACCUMULO_COLUMN_COUNTS_TABLE_ENV_KEY;
 
   // Cell Level Visibility Iterator Setting
-  private static final IteratorSetting visibilityIteratorSetting =
-      new IteratorSetting(21, "colCntVisItr", ColumnCountVisibilityIterator.class);
+  private static final IteratorSetting visibilityIteratorSetting = new IteratorSetting(21, "colCntVisItr",
+      ColumnCountVisibilityIterator.class);
 
   private ColumnCountObject columnCountObj;
   private Long index;
@@ -122,10 +123,8 @@ public class ColumnCountPaginationObject
       result.columnCountObj = colCount.fromEntry(entry);
       result.index = Long.valueOf(entry.getValue().toString());
     } else {
-      HashMap<String, byte[]> map =
-          (HashMap<String, byte[]>) SerializationUtils.deserialize(entry.getValue().get());
-      Key key =
-          new Key(new Text(map.get("row")), new Text(Const.COL_FAM_DATA), new Text(map.get("col")));
+      HashMap<String, byte[]> map = (HashMap<String, byte[]>) SerializationUtils.deserialize(entry.getValue().get());
+      Key key = new Key(new Text(map.get("row")), new Text(Const.COL_FAM_DATA), new Text(map.get("col")));
       ColumnCountObject colCount = new ColumnCountObject();
 
       result.columnCountObj = colCount.fromEntry(new SimpleEntry<>(key, new Value()));
@@ -140,11 +139,14 @@ public class ColumnCountPaginationObject
   /**
    * Creates an Accumulo Key with the following format:
    *
-   * <p>RowID: <code>dataset\x00table\x00column\x00sort_order\x00index</code>
+   * <p>
+   * RowID: <code>dataset\x00table\x00column\x00sort_order\x00index</code>
    *
-   * <p>ColFam: <code>I</code>
+   * <p>
+   * ColFam: <code>I</code>
    *
-   * <p>ColQual: <code>index</code>
+   * <p>
+   * ColQual: <code>index</code>
    *
    * @return
    * @throws InvalidDataFormat
@@ -153,13 +155,12 @@ public class ColumnCountPaginationObject
   public Key createAccumuloKey() throws InvalidDataFormat {
     byte[] encIdx = longLex.encode(index);
 
-    byte[] rowID =
-        joinKeyComponents(
-            columnCountObj.dataset.getBytes(),
-            columnCountObj.tableId.getBytes(),
-            columnCountObj.column.getBytes(),
-            columnCountObj.sortOrder.GetCode().getBytes(),
-            encIdx);
+    byte[] rowID = joinKeyComponents(
+        columnCountObj.dataset.getBytes(),
+        columnCountObj.tableId.getBytes(),
+        columnCountObj.column.getBytes(),
+        columnCountObj.sortOrder.GetCode().getBytes(),
+        encIdx);
 
     return new Key(
         new Text(rowID),

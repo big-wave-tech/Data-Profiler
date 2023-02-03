@@ -29,7 +29,8 @@ package com.dataprofiler.util.objects;
 import com.dataprofiler.util.BasicAccumuloException;
 import com.dataprofiler.util.Const;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ColumnCountVisibilityIterator;
+import com.dataprofiler.util.objects.iterators.ColumnCountVisibilityIterator;
+import com.dataprofiler.util.objects.iterators.indexData.ActiveTableFilter;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import java.io.IOException;
@@ -56,12 +57,13 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   private static final String accumuloTable = Const.ACCUMULO_INDEX_TABLE_ENV_KEY;
 
   // Cell Level Visibility Iterator Setting
-  private static final IteratorSetting visibilityIteratorSetting =
-      new IteratorSetting(21, "colCntVisItr", ColumnCountVisibilityIterator.class);
+  private static final IteratorSetting visibilityIteratorSetting = new IteratorSetting(21, "colCntVisItr",
+      ColumnCountVisibilityIterator.class);
 
   private String dataset;
   private String tableId;
-  // This is the table name - but it's called table for historical reasons (and old data has this
+  // This is the table name - but it's called table for historical reasons (and
+  // old data has this
   // stored
   // in accumulo so it needs to not change).
   private String table;
@@ -105,7 +107,8 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
     ColumnCountIndexObject c = null;
     try {
       c = mapper.readValue(entry.getValue().get(), this.getClass());
-      // This handles old records that only store the table and not the table id. For records of
+      // This handles old records that only store the table and not the table id. For
+      // records of
       // that
       // age the table name is the table id, so this works correctly.
       if (c.tableId == null) {
@@ -127,9 +130,7 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   private ObjectScannerIterable<ColumnCountIndexObject> addActiveTableFilter(
       ObjectScannerIterable<ColumnCountIndexObject> scanner, Map<String, String> activeTables) {
     this.activeTables = activeTables;
-    IteratorSetting iter =
-        new IteratorSetting(
-            100, "filterActiveTables", "com.dataprofiler.iterators.indexData.ActiveTableFilter");
+    IteratorSetting iter = new IteratorSetting(100, "filterActiveTables", ActiveTableFilter.class);
     String activeTableConf = String.join("__&&__", activeTables.keySet());
     iter.addOption("active_tables", activeTableConf);
     scanner.addScanIterator(iter);
@@ -137,13 +138,15 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   }
 
   /**
-   * * Find entries in the index matching the provided term. This will only return tables in the map
+   * * Find entries in the index matching the provided term. This will only return
+   * tables in the map
    * of provided tables (map should be tableids -> table names).
    *
-   * @param context dataprofiler context
-   * @param activeTables map of table ids -> table names for tables that should be returned
-   * @param term term to search for
-   * @param exclusive whether to match the term exacly or as a prefix
+   * @param context      dataprofiler context
+   * @param activeTables map of table ids -> table names for tables that should be
+   *                     returned
+   * @param term         term to search for
+   * @param exclusive    whether to match the term exacly or as a prefix
    * @return
    */
   public ObjectScannerIterable<ColumnCountIndexObject> find(
@@ -197,8 +200,7 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
           columnFam = Const.INDEX_COLUMN;
           if (spec.getSubstring_match() == true) {
             rowId = joinKeyComponents(spec.getDataset(), spec.getTable(), spec.getColumn());
-            IteratorSetting substringRegex =
-                new IteratorSetting(100, "substringMatchFilter", RegExFilter.class);
+            IteratorSetting substringRegex = new IteratorSetting(100, "substringMatchFilter", RegExFilter.class);
             substringRegex.addOption(RegExFilter.ROW_REGEX, Pattern.quote(term));
             substringRegex.addOption(RegExFilter.MATCH_SUBSTRING, "true");
             scanner.addScanIterator(substringRegex);
@@ -207,8 +209,7 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
           }
         } else if (spec.getSubstring_match() == true) {
           rowId = joinKeyComponents(spec.getDataset(), spec.getTable());
-          IteratorSetting substringRegex =
-              new IteratorSetting(100, "substringMatchFilter", RegExFilter.class);
+          IteratorSetting substringRegex = new IteratorSetting(100, "substringMatchFilter", RegExFilter.class);
           substringRegex.addOption(RegExFilter.ROW_REGEX, Pattern.quote(term));
           substringRegex.addOption(RegExFilter.MATCH_SUBSTRING, "true");
           scanner.addScanIterator(substringRegex);
@@ -234,7 +235,8 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   }
 
   /**
-   * Value for Column Count Index is the JSON object that contains: * dataset * table * value *
+   * Value for Column Count Index is the JSON object that contains: * dataset *
+   * table * value *
    * count
    *
    * @return Accumulo Value
@@ -247,18 +249,20 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   /**
    * Keys for the Column Count Index Objects are
    *
-   * <p>RowID: value
+   * <p>
+   * RowID: value
    *
-   * <p>Col Fam: dataset DELIM tableId
+   * <p>
+   * Col Fam: dataset DELIM tableId
    *
-   * <p>Col Qual: dataset DELIM tableId DELIM column
+   * <p>
+   * Col Qual: dataset DELIM tableId DELIM column
    *
    * @return Accumulo Key
    */
   @Override
   public Key createAccumuloKey() throws InvalidDataFormat {
-    String valueNorm =
-        this.normalizedValue == null ? value.toLowerCase().trim() : this.normalizedValue;
+    String valueNorm = this.normalizedValue == null ? value.toLowerCase().trim() : this.normalizedValue;
     String rowId;
     String colFam;
 
@@ -298,8 +302,10 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   @Override
   public void bulkPurgeTable(Context context, String datasetName, String tableName, String tableId)
       throws BasicAccumuloException {
-    // We can only bulk purge some data - other we have to batch purge. We are going to do this
-    // all from one interface - maybe this is a bad idea, but I want to do this simply and correctly
+    // We can only bulk purge some data - other we have to batch purge. We are going
+    // to do this
+    // all from one interface - maybe this is a bad idea, but I want to do this
+    // simply and correctly
     // rather than fast.
 
     // This will take out the table and column level indexes

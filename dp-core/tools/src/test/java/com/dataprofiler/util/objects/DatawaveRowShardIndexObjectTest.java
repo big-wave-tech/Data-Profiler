@@ -30,7 +30,7 @@ import com.dataprofiler.DPSparkContext;
 import com.dataprofiler.MiniAccumuloWithData;
 import com.dataprofiler.test.IntegrationTest;
 import com.dataprofiler.util.Const;
-import com.dataprofiler.util.iterators.ClosableIterator;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
 import com.dataprofiler.loader.TableLoader;
 import com.dataprofiler.loader.config.CsvFileParams;
 import com.dataprofiler.loader.datatypes.CsvLoader;
@@ -82,9 +82,9 @@ public class DatawaveRowShardIndexObjectTest {
       params.setQuote("\"");
       params.setInputFilename(DATASET);
 
-      // The CSV loader is called specifically to define the num samples and tablet size
-      CsvLoader loader =
-          new CsvLoader(context, spark, DATASET_NAME, TABLE_NAME, VISIBILITY, "", "", params);
+      // The CSV loader is called specifically to define the num samples and tablet
+      // size
+      CsvLoader loader = new CsvLoader(context, spark, DATASET_NAME, TABLE_NAME, VISIBILITY, "", "", params);
       Dataset<Row> origTable = Loader.readCSV(spark, params);
 
       long numRows = origTable.count();
@@ -143,8 +143,7 @@ public class DatawaveRowShardIndexObjectTest {
     long rowShardLast = Long.MIN_VALUE;
     Set<Long> rowShardSet = new HashSet<>();
 
-    try (ClosableIterator<DatawaveRowShardIndexObject> iter =
-        datawaveRowShardIter(DATASET_NAME, TABLE_NAME)) {
+    try (ClosableIterator<DatawaveRowShardIndexObject> iter = datawaveRowShardIter(DATASET_NAME, TABLE_NAME)) {
 
       while (iter.hasNext()) {
         long shardId = iter.next().getShard();
@@ -158,8 +157,7 @@ public class DatawaveRowShardIndexObjectTest {
       }
     }
 
-    try (ClosableIterator<DatawaveRowObject> iter =
-        datawaveRowIter(DATASET_NAME, TABLE_NAME)) {
+    try (ClosableIterator<DatawaveRowObject> iter = datawaveRowIter(DATASET_NAME, TABLE_NAME)) {
 
       while (iter.hasNext()) {
         long shardId = iter.next().getShard();
@@ -183,33 +181,28 @@ public class DatawaveRowShardIndexObjectTest {
 
     LongLexicoder longLex = new LongLexicoder();
 
-    try (ClosableIterator<DatawaveRowShardIndexObject> iter =
-        datawaveRowShardIter(DATASET_NAME, TABLE_NAME)) {
+    try (ClosableIterator<DatawaveRowShardIndexObject> iter = datawaveRowShardIter(DATASET_NAME, TABLE_NAME)) {
 
       while (iter.hasNext()) {
 
         DatawaveRowShardIndexObject shard = iter.next();
 
-        byte[] rowId =
-            AccumuloObject.joinKeyComponents(
-                shard.getDatasetName().getBytes(),
-                shard.getTableName().getBytes(),
-                longLex.encode(shard.getShard()));
-        byte[] colQual =
-            AccumuloObject.joinKeyComponents(
-                longLex.encode(shard.getRowIdx()), "CBSA Code".getBytes());
+        byte[] rowId = AccumuloObject.joinKeyComponents(
+            shard.getDatasetName().getBytes(),
+            shard.getTableName().getBytes(),
+            longLex.encode(shard.getShard()));
+        byte[] colQual = AccumuloObject.joinKeyComponents(
+            longLex.encode(shard.getRowIdx()), "CBSA Code".getBytes());
         Key start = new Key(new Text(rowId), new Text(Const.COL_FAM_DATA), new Text(colQual));
 
-        byte[] colQual2 =
-            AccumuloObject.joinKeyComponents(
-                longLex.encode(shard.getRowIdx() + 1), "CBSA Code".getBytes());
+        byte[] colQual2 = AccumuloObject.joinKeyComponents(
+            longLex.encode(shard.getRowIdx() + 1), "CBSA Code".getBytes());
         Key end = new Key(new Text(rowId), new Text(Const.COL_FAM_DATA), new Text(colQual2));
 
-        try (ClosableIterator<DatawaveRowObject> rowIter =
-            new DatawaveRowObject()
-                .scan(mad.getContext())
-                .addRange(new Range(start, end))
-                .closeableIterator()) {
+        try (ClosableIterator<DatawaveRowObject> rowIter = new DatawaveRowObject()
+            .scan(mad.getContext())
+            .addRange(new Range(start, end))
+            .closeableIterator()) {
 
           if (rowIter.hasNext()) {
             DatawaveRowObject rowObj = rowIter.next();

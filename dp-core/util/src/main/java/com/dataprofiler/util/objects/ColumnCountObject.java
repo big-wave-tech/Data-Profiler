@@ -29,9 +29,9 @@ package com.dataprofiler.util.objects;
 import com.dataprofiler.util.BasicAccumuloException;
 import com.dataprofiler.util.Const;
 import com.dataprofiler.util.Const.SortOrder;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
+import com.dataprofiler.util.objects.iterators.ColumnCountVisibilityIterator;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ClosableIterator;
-import com.dataprofiler.util.iterators.ColumnCountVisibilityIterator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
@@ -62,8 +62,8 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
   private static final String accumuloTable = Const.ACCUMULO_COLUMN_COUNTS_TABLE_ENV_KEY;
 
   // Cell Level Visibility Iterator Setting
-  private static final IteratorSetting visibilityIteratorSetting =
-      new IteratorSetting(21, "colCntVisItr", ColumnCountVisibilityIterator.class);
+  private static final IteratorSetting visibilityIteratorSetting = new IteratorSetting(21, "colCntVisItr",
+      ColumnCountVisibilityIterator.class);
 
   public String value;
   public Long count;
@@ -97,15 +97,18 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
   }
 
   /**
-   * Combine the counts of similar values stored in the same column. E.g. a column containing
-   * ("foo",1) and ("foo ",2) should have value ("foo",3) but this might not be the case. This
+   * Combine the counts of similar values stored in the same column. E.g. a column
+   * containing
+   * ("foo",1) and ("foo ",2) should have value ("foo",3) but this might not be
+   * the case. This
    * method is mainly used in indexing to combine the counts of similar values.
    *
    * @param c1 A ColumnCountObject
    * @param c2 A ColumnCountObject
    * @return A ColumnCountObject with the count's summed
-   * @throws BasicAccumuloException An exception is thrown if the objects being merged are not from
-   *     the same dataset, table, and column
+   * @throws BasicAccumuloException An exception is thrown if the objects being
+   *                                merged are not from
+   *                                the same dataset, table, and column
    */
   public static ColumnCountObject combineColumns(ColumnCountObject c1, ColumnCountObject c2)
       throws BasicAccumuloException {
@@ -202,9 +205,9 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
       throw new InvalidDataFormat("Key with wrong number of fields");
     }
     sb.append(
-            new String(
-                Arrays.copyOfRange(
-                    rowId.getBytes(), firstDelimIdx + DELIMITER_LEN, secondDelimIdx)))
+        new String(
+            Arrays.copyOfRange(
+                rowId.getBytes(), firstDelimIdx + DELIMITER_LEN, secondDelimIdx)))
         .append(DELIMITER);
 
     // Get column
@@ -213,9 +216,9 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
       throw new InvalidDataFormat("Key with wrong number of fields");
     }
     sb.append(
-            new String(
-                Arrays.copyOfRange(
-                    rowId.getBytes(), secondDelimIdx + DELIMITER_LEN, thirdDelimIdx)))
+        new String(
+            Arrays.copyOfRange(
+                rowId.getBytes(), secondDelimIdx + DELIMITER_LEN, thirdDelimIdx)))
         .append(DELIMITER);
 
     // Get sort method
@@ -239,11 +242,15 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
   /**
    * Keys for the Count Objects are:
    *
-   * <p>RowId: dataset DELIM tableId DELIM column DELIM value DELIM sortType DELIM value|count
+   * <p>
+   * RowId: dataset DELIM tableId DELIM column DELIM value DELIM sortType DELIM
+   * value|count
    *
-   * <p>Col Fam: D
+   * <p>
+   * Col Fam: D
    *
-   * <p>Col Qual: {"value":value,"count":count}
+   * <p>
+   * Col Qual: {"value":value,"count":count}
    */
   @Override
   @JsonIgnore
@@ -265,14 +272,13 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
   public Key createAccumuloKeyCountAscending() {
     byte[] encCnt = longLex.encode(count);
     byte[] encVal = stringLex.encode(value.toLowerCase());
-    byte[] rowID =
-        joinKeyComponents(
-            dataset.getBytes(),
-            tableId.getBytes(),
-            column.getBytes(),
-            SortOrder.CNT_ASC.GetCode().getBytes(),
-            encCnt,
-            encVal);
+    byte[] rowID = joinKeyComponents(
+        dataset.getBytes(),
+        tableId.getBytes(),
+        column.getBytes(),
+        SortOrder.CNT_ASC.GetCode().getBytes(),
+        encCnt,
+        encVal);
 
     return buildAccumuloKey(rowID);
   }
@@ -281,14 +287,13 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
   public Key createAccumuloKeyCountDescending() {
     byte[] encCnt = reverseLongLex.encode(count);
     byte[] encVal = reverseStringLex.encode(value.toLowerCase());
-    byte[] rowID =
-        joinKeyComponents(
-            dataset.getBytes(),
-            tableId.getBytes(),
-            column.getBytes(),
-            SortOrder.CNT_DESC.GetCode().getBytes(),
-            encCnt,
-            encVal);
+    byte[] rowID = joinKeyComponents(
+        dataset.getBytes(),
+        tableId.getBytes(),
+        column.getBytes(),
+        SortOrder.CNT_DESC.GetCode().getBytes(),
+        encCnt,
+        encVal);
 
     return buildAccumuloKey(rowID);
   }
@@ -296,13 +301,12 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
   @JsonIgnore
   public Key createAccumuloKeyValueAscending() {
     byte[] encVal = stringLex.encode(value.toLowerCase());
-    byte[] rowID =
-        joinKeyComponents(
-            dataset.getBytes(),
-            tableId.getBytes(),
-            column.getBytes(),
-            SortOrder.VAL_ASC.GetCode().getBytes(),
-            encVal);
+    byte[] rowID = joinKeyComponents(
+        dataset.getBytes(),
+        tableId.getBytes(),
+        column.getBytes(),
+        SortOrder.VAL_ASC.GetCode().getBytes(),
+        encVal);
 
     return buildAccumuloKey(rowID);
   }
@@ -310,13 +314,12 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
   @JsonIgnore
   public Key createAccumuloKeyValueDescending() {
     byte[] encVal = reverseStringLex.encode(value.toLowerCase());
-    byte[] rowID =
-        joinKeyComponents(
-            dataset.getBytes(),
-            tableId.getBytes(),
-            column.getBytes(),
-            SortOrder.VAL_DESC.GetCode().getBytes(),
-            encVal);
+    byte[] rowID = joinKeyComponents(
+        dataset.getBytes(),
+        tableId.getBytes(),
+        column.getBytes(),
+        SortOrder.VAL_DESC.GetCode().getBytes(),
+        encVal);
 
     return buildAccumuloKey(rowID);
   }
@@ -362,33 +365,29 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
     if (secondDelimIdx < 0) {
       throw new InvalidDataFormat("Key with wrong number of fields");
     }
-    c.tableId =
-        new String(
-            Arrays.copyOfRange(rowId.getBytes(), firstDelimIdx + DELIMITER_LEN, secondDelimIdx));
+    c.tableId = new String(
+        Arrays.copyOfRange(rowId.getBytes(), firstDelimIdx + DELIMITER_LEN, secondDelimIdx));
 
     // Get column
     int thirdDelimIdx = rowId.find(DELIMITER.toString(), secondDelimIdx + 1);
     if (thirdDelimIdx < 0) {
       throw new InvalidDataFormat("Key with wrong number of fields");
     }
-    c.column =
-        new String(
-            Arrays.copyOfRange(rowId.getBytes(), secondDelimIdx + DELIMITER_LEN, thirdDelimIdx));
+    c.column = new String(
+        Arrays.copyOfRange(rowId.getBytes(), secondDelimIdx + DELIMITER_LEN, thirdDelimIdx));
 
     // Get sort method
     int fourthDelimIdx = rowId.find(DELIMITER.toString(), thirdDelimIdx + 1);
     if (fourthDelimIdx < 0) {
       throw new InvalidDataFormat("Key with wrong number of fields");
     }
-    String sortType =
-        new String(
-            Arrays.copyOfRange(rowId.getBytes(), thirdDelimIdx + DELIMITER_LEN, fourthDelimIdx));
+    String sortType = new String(
+        Arrays.copyOfRange(rowId.getBytes(), thirdDelimIdx + DELIMITER_LEN, fourthDelimIdx));
     c.sortOrder = SortOrder.getEnum(sortType);
 
     // Get the value and count
     try {
-      ValueCountObject valCnt =
-          mapper.readValue(key.getColumnQualifier().getBytes(), ValueCountObject.class);
+      ValueCountObject valCnt = mapper.readValue(key.getColumnQualifier().getBytes(), ValueCountObject.class);
       c.value = valCnt.getValue();
       c.count = valCnt.getCount();
     } catch (Exception ex) {
@@ -484,21 +483,19 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
 
     long endIdx = Long.MAX_VALUE;
     if (end != -1) {
-      endIdx =
-          (long) (Math.ceil(end / Const.VALUES_PER_PAGE.doubleValue()) * Const.VALUES_PER_PAGE);
+      endIdx = (long) (Math.ceil(end / Const.VALUES_PER_PAGE.doubleValue()) * Const.VALUES_PER_PAGE);
     }
 
-    ObjectScannerIterable<ColumnCountPaginationObject> pages =
-        new ColumnCountPaginationObject().getIndicies(context, columnMetadata, sortOrder);
+    ObjectScannerIterable<ColumnCountPaginationObject> pages = new ColumnCountPaginationObject().getIndicies(context,
+        columnMetadata, sortOrder);
 
     // Set the start and end to maximum range
-    String hash =
-        String.join(
-            Const.DELIMITER,
-            columnMetadata.dataset_name,
-            columnMetadata.table_id,
-            columnMetadata.column_name,
-            sortOrder.GetCode());
+    String hash = String.join(
+        Const.DELIMITER,
+        columnMetadata.dataset_name,
+        columnMetadata.table_id,
+        columnMetadata.column_name,
+        sortOrder.GetCode());
     Key startKey = new Key(hash + Const.DELIMITER);
     Key endKey = new Key(hash + Const.HIGH_BYTE);
 
@@ -518,8 +515,7 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
       e.printStackTrace();
     }
 
-    ObjectScannerIterable<ColumnCountObject> colCntObjs =
-        new ColumnCountObject().find(context, startKey, endKey);
+    ObjectScannerIterable<ColumnCountObject> colCntObjs = new ColumnCountObject().find(context, startKey, endKey);
 
     int idx = 0;
     long count = 0L;
@@ -600,7 +596,8 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
   }
 
   /**
-   * Using this will return all of the data from the column count table and is overall probably the
+   * Using this will return all of the data from the column count table and is
+   * overall probably the
    * wrong thing to do. You have been warned!
    *
    * @param context
@@ -627,8 +624,7 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
   private ObjectScannerIterable<ColumnCountObject> filterBySortOrder(
       ObjectScannerIterable<ColumnCountObject> scanner, SortOrder sortOrder) {
     // Use a RegEx iterator to match a specific sort order
-    IteratorSetting filterSortOrder =
-        new IteratorSetting(100, "sortOrderFilter", RegExFilter.class);
+    IteratorSetting filterSortOrder = new IteratorSetting(100, "sortOrderFilter", RegExFilter.class);
     filterSortOrder.addOption(RegExFilter.ROW_REGEX, sortOrder.GetCode());
     filterSortOrder.addOption(RegExFilter.MATCH_SUBSTRING, "true");
     scanner.addScanIterator(filterSortOrder);
@@ -717,7 +713,8 @@ public class ColumnCountObject extends VersionedPurgableDatasetObject<ColumnCoun
     public String value;
     public Long count;
 
-    public ValueCountObject() {}
+    public ValueCountObject() {
+    }
 
     public ValueCountObject(String value, Long count) {
       this.value = value;

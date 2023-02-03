@@ -1,6 +1,6 @@
 /**
 *  Copyright 2021 Merck & Co., Inc. Kenilworth, NJ, USA.
-* 
+*
 * 	Licensed to the Apache Software Foundation (ASF) under one
 * 	or more contributor license agreements. See the NOTICE file
 * 	distributed with this work for additional information
@@ -8,10 +8,10 @@
 * 	to you under the Apache License, Version 2.0 (the
 * 	"License"); you may not use this file except in compliance
 * 	with the License. You may obtain a copy of the License at
-* 
+*
 * 	http://www.apache.org/licenses/LICENSE-2.0
-* 
-* 
+*
+*
 * 	Unless required by applicable law or agreed to in writing,
 * 	software distributed under the License is distributed on an
 * 	"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,7 +26,7 @@ import actions.Authenticated;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.dataprofiler.util.Const.SortOrder;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ClosableIterator;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
 import com.dataprofiler.util.objects.VersionedDatasetMetadata;
 import com.dataprofiler.util.objects.MetadataVersionObject;
 import com.dataprofiler.util.objects.VersionedMetadataObject;
@@ -81,14 +81,14 @@ public class AccumuloControllerV1 extends Controller {
     this.config = config;
     this.accumulo = new AccumuloHelper();
   }
-  
+
   public Result datasets(Request req) {
     Context context = (Context) req.attrs().get(RulesOfUseHelper.USER_CONTEXT_TYPED_KEY);
     logger.debug("fetching datasets with context auths: " + context.getAuthorizations());
     MetadataVersionObject version = context.getCurrentMetadataVersion();
     logger.debug("metadata version is: " + version.getId());
-    Map<String, VersionedMetadataObject> returnObj =
-      stream(new VersionedMetadataObject().scanDatasets(context, version).spliterator(), false)
+    Map<String, VersionedMetadataObject> returnObj = stream(
+        new VersionedMetadataObject().scanDatasets(context, version).spliterator(), false)
         .collect(toMap(VersionedMetadataObject::getDataset_name, identity()));
 
     return ok(Json.toJson(returnObj));
@@ -97,15 +97,14 @@ public class AccumuloControllerV1 extends Controller {
   public Result tables(Request req, String dataset) {
     Context context = (Context) req.attrs().get(RulesOfUseHelper.USER_CONTEXT_TYPED_KEY);
     dataset = decodeForwardSlash(dataset);
-    
-    Map<String, VersionedMetadataObject> allTables =
-      stream(
+
+    Map<String, VersionedMetadataObject> allTables = stream(
         new VersionedMetadataObject()
-          .scanTables(context, context.getCurrentMetadataVersion(), dataset)
-          .spliterator(),
+            .scanTables(context, context.getCurrentMetadataVersion(), dataset)
+            .spliterator(),
         false)
-          .collect(toMap(VersionedMetadataObject::getTable_name, identity()));
-    
+        .collect(toMap(VersionedMetadataObject::getTable_name, identity()));
+
     return ok(Json.toJson(allTables));
   }
 
@@ -113,16 +112,15 @@ public class AccumuloControllerV1 extends Controller {
     Context context = (Context) req.attrs().get(RulesOfUseHelper.USER_CONTEXT_TYPED_KEY);
     dataset = decodeForwardSlash(dataset);
     table = decodeForwardSlash(table);
-    
-    Map<String, VersionedMetadataObject> allColumns =
-      stream(
+
+    Map<String, VersionedMetadataObject> allColumns = stream(
         new VersionedMetadataObject()
-          .scanColumns(context, context.getCurrentMetadataVersion(), dataset, table)
-          .spliterator(),
+            .scanColumns(context, context.getCurrentMetadataVersion(), dataset, table)
+            .spliterator(),
         false)
-          .collect(toMap(VersionedMetadataObject::getColumn_name, identity()));
-    
-      return ok(Json.toJson(allColumns));
+        .collect(toMap(VersionedMetadataObject::getColumn_name, identity()));
+
+    return ok(Json.toJson(allColumns));
   }
 
   // This is used for /v1/search and /search
@@ -158,8 +156,8 @@ public class AccumuloControllerV1 extends Controller {
         spec.setBegins_with(false);
       }
 
-      try (ClosableIterator<ColumnCountIndexObject> iter =
-          new ColumnCountIndexObject().find(context, spec).closeableIterator()) {
+      try (ClosableIterator<ColumnCountIndexObject> iter = new ColumnCountIndexObject().find(context, spec)
+          .closeableIterator()) {
         while (iter.hasNext() && result.size() < limit) {
           ColumnCountIndexObject indexObj = iter.next();
 
@@ -223,8 +221,8 @@ public class AccumuloControllerV1 extends Controller {
     Context context = (Context) req.attrs().get(RulesOfUseHelper.USER_CONTEXT_TYPED_KEY);
 
     MetadataVersionObject version = context.getCurrentMetadataVersion();
-    VersionedMetadataObject colMetadata =
-        new VersionedMetadataObject().fetchColumn(context, version, dataset, table, column);
+    VersionedMetadataObject colMetadata = new VersionedMetadataObject().fetchColumn(context, version, dataset, table,
+        column);
 
     return ok(
         Json.toJson(

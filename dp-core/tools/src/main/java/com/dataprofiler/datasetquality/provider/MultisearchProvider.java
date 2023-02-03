@@ -42,11 +42,12 @@ import com.dataprofiler.datasetquality.MultisearchException;
 import com.dataprofiler.datasetquality.model.multisearch.ColumnCountResult;
 import com.dataprofiler.datasetquality.model.multisearch.GroupedColumnCountResult;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ClosableIterator;
 import com.dataprofiler.util.objects.ColumnCountIndexObject;
 import com.dataprofiler.util.objects.DataScanSpec;
 import com.dataprofiler.util.objects.VersionedDataScanSpec;
 import com.dataprofiler.util.objects.VersionedDatasetMetadata.MissingMetadataException;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -97,11 +98,10 @@ public class MultisearchProvider {
       VersionedDataScanSpec.Level groupingLevel = determineGroupLevel(spec);
       Map<String, Map<String, ColumnCountIndexObject>> termLevelCounts = new HashMap<>();
       Set<String> intersectionPrev = new HashSet<>();
-      List<String> originalTerms =
-          new ArrayList<>(spec.getTerm().subList(0, spec.getTerm().size() - 1));
-      //      List<String> originalTerms =
-      //          new LinkedHashSet<>(spec.getTerm().subList(0, spec.getTerm().size() - 1))
-      //              .stream().map(el -> el.toLowerCase()).collect(toList());
+      List<String> originalTerms = new ArrayList<>(spec.getTerm().subList(0, spec.getTerm().size() - 1));
+      // List<String> originalTerms =
+      // new LinkedHashSet<>(spec.getTerm().subList(0, spec.getTerm().size() - 1))
+      // .stream().map(el -> el.toLowerCase()).collect(toList());
       final int numTerms = spec.getTerm().size();
 
       for (int i = 0; i < numTerms; i++) {
@@ -126,8 +126,7 @@ public class MultisearchProvider {
         spec.getTerm().remove(0);
       }
 
-      final String finalLogMsg =
-          "%s dataset: %s, terms: %s, count: %s, grouped results: %s, total time: %s";
+      final String finalLogMsg = "%s dataset: %s, terms: %s, count: %s, grouped results: %s, total time: %s";
       if (intersectionPrev.size() == 0) {
         Instant totalEnd = now();
         if (logger.isInfoEnabled()) {
@@ -154,8 +153,7 @@ public class MultisearchProvider {
         findMostGranularScope(originalTerms, termLevelCounts, groupingLevel);
       }
 
-      Map<String, Map<String, ColumnCountIndexObject>> groupings =
-          groupTermsByLevel(termLevelCounts, groupingLevel);
+      Map<String, Map<String, ColumnCountIndexObject>> groupings = groupTermsByLevel(termLevelCounts, groupingLevel);
 
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -163,14 +161,12 @@ public class MultisearchProvider {
                 "%s dataset: %s groupings: %s",
                 SEARCH_SYMBOL, spec.getDataset(), groupings.keySet().size()));
       }
-      List<GroupedColumnCountResult> groupedColumnCountResults =
-          groupResults(originalTerms, numTerms, groupings);
+      List<GroupedColumnCountResult> groupedColumnCountResults = groupResults(originalTerms, numTerms, groupings);
 
       Instant totalEnd = now();
       if (logger.isInfoEnabled()) {
         Duration duration = between(totalStart, totalEnd);
-        final long totalCount =
-            groupedColumnCountResults.stream().mapToLong(el -> el.getCount()).sum();
+        final long totalCount = groupedColumnCountResults.stream().mapToLong(el -> el.getCount()).sum();
         final long numResultElements = groupedColumnCountResults.size();
         logger.info(
             format(
@@ -206,8 +202,8 @@ public class MultisearchProvider {
       throws MultisearchException {
     Set<String> intersectionCurr = new HashSet<>();
     List<ColumnCountIndexObject> results = new ArrayList<>();
-    try (ClosableIterator<ColumnCountIndexObject> iter =
-        new ColumnCountIndexObject().find(context, spec).closeableIterator()) {
+    try (ClosableIterator<ColumnCountIndexObject> iter = new ColumnCountIndexObject().find(context, spec)
+        .closeableIterator()) {
       if (logger.isDebugEnabled()) {
         logger.debug(format("%s results size:%s, limit: %s", SEARCH_SYMBOL, results.size(), limit));
       }
@@ -279,18 +275,18 @@ public class MultisearchProvider {
       logger.trace("groupings " + groupings);
     }
     // Create all possible search permutations
-    List<String> searchPermutations =
-        groupings.keySet().stream()
-            .filter(p -> !originalTerms.contains(p))
-            .map(lt -> join("", originalTerms) + lt)
-            .collect(toList());
+    List<String> searchPermutations = groupings.keySet().stream()
+        .filter(p -> !originalTerms.contains(p))
+        .map(lt -> join("", originalTerms) + lt)
+        .collect(toList());
 
     if (logger.isTraceEnabled()) {
       logger.trace("search permutations: " + searchPermutations);
     }
     Map<String, ColumnCountResult> merged = new HashMap<>();
 
-    // Merge search permutation results and update stats within elements on collisions
+    // Merge search permutation results and update stats within elements on
+    // collisions
     originalTerms.forEach(
         (searchTerm) -> {
           Map<String, ColumnCountIndexObject> indexLevels = groupings.get(searchTerm);
@@ -314,11 +310,10 @@ public class MultisearchProvider {
     groupings.forEach(
         (term, v) -> {
           v.forEach(
-              (level, index) ->
-                  merged.merge(
-                      prefix + term + level,
-                      new ColumnCountResult(index),
-                      ColumnCountResult::merge));
+              (level, index) -> merged.merge(
+                  prefix + term + level,
+                  new ColumnCountResult(index),
+                  ColumnCountResult::merge));
         });
 
     if (logger.isTraceEnabled()) {
@@ -371,8 +366,7 @@ public class MultisearchProvider {
 
     // Assume column level. Traverse each value map and intersect at this level
     if (groupingLevel == DataScanSpec.Level.COLUMN) {
-      Set<String> columnIntersection =
-          findResultsAtLevel(termLevelCounts, origTerms, DataScanSpec.Level.COLUMN);
+      Set<String> columnIntersection = findResultsAtLevel(termLevelCounts, origTerms, DataScanSpec.Level.COLUMN);
       if (columnIntersection.size() > 0) {
         // Filter out out negative matches not at our current level
         termLevelCounts
@@ -385,8 +379,7 @@ public class MultisearchProvider {
                 });
       }
     } else if (groupingLevel == DataScanSpec.Level.TABLE) {
-      Set<String> tableIntersection =
-          findResultsAtLevel(termLevelCounts, origTerms, DataScanSpec.Level.TABLE);
+      Set<String> tableIntersection = findResultsAtLevel(termLevelCounts, origTerms, DataScanSpec.Level.TABLE);
       if (tableIntersection.size() > 0) {
         // Filter out out negative matches not at our current level
         termLevelCounts

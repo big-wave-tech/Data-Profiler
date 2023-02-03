@@ -30,9 +30,10 @@ import static java.lang.String.format;
 import static java.util.Objects.isNull;
 import static java.util.stream.Collectors.toList;
 
-import com.dataprofiler.util.iterators.ClosableIterator;
 import com.dataprofiler.util.objects.ObjectScannerIterable;
 import com.dataprofiler.util.objects.VersionedMetadataObject;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -49,8 +50,7 @@ public abstract class VersionLineageService {
     try (ClosableIterator<VersionedMetadataObject> itr = scanner.iterator()) {
       while (itr.hasNext()) {
         VersionedMetadataObject current = itr.next();
-        boolean alreadySeen =
-            list.stream().anyMatch(el -> el.version_id.equals(current.version_id));
+        boolean alreadySeen = list.stream().anyMatch(el -> el.version_id.equals(current.version_id));
         if (!alreadySeen) {
           list.add(current);
           count++;

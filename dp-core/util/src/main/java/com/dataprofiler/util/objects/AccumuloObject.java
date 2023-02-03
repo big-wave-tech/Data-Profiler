@@ -31,7 +31,7 @@ import static java.lang.String.format;
 import com.dataprofiler.util.BasicAccumuloException;
 import com.dataprofiler.util.Const;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ClosableIterator;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,8 +60,8 @@ import org.apache.log4j.Logger;
 
 public abstract class AccumuloObject<T extends AccumuloObject> implements Serializable {
   private static final Logger logger = Logger.getLogger(AccumuloObject.class);
-  protected static ObjectMapper mapper =
-      new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  protected static ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+      false);
 
   /*
    * This is the name of the configuration entry that holds the table name - NOT
@@ -71,7 +71,8 @@ public abstract class AccumuloObject<T extends AccumuloObject> implements Serial
   protected String visibility = "";
   protected long timestamp = 0L;
 
-  protected AccumuloObject() {}
+  protected AccumuloObject() {
+  }
 
   protected AccumuloObject(String configEntryNameforAccumuloTable) {
     this.configEntryNameForAccumuloTable = configEntryNameforAccumuloTable;
@@ -161,7 +162,8 @@ public abstract class AccumuloObject<T extends AccumuloObject> implements Serial
   }
 
   /**
-   * Create a new instance of this object from the provided Context and Entry. Can throw the runtime
+   * Create a new instance of this object from the provided Context and Entry. Can
+   * throw the runtime
    * exception of InvalidDataFormat.
    *
    * @param entry An entry from accumulo representing an object of this type
@@ -170,7 +172,8 @@ public abstract class AccumuloObject<T extends AccumuloObject> implements Serial
   public abstract T fromEntry(Entry<Key, Value> entry);
 
   /**
-   * Update all of the AccumuloObject properties from they key (such as visibilities). Most
+   * Update all of the AccumuloObject properties from they key (such as
+   * visibilities). Most
    * implementations of fromEntry should call this.
    *
    * @param entry
@@ -195,10 +198,9 @@ public abstract class AccumuloObject<T extends AccumuloObject> implements Serial
   }
 
   public T fetch(Context context, Key key) {
-    ObjectScannerIterable<T> scanner =
-        scan(context)
-            .addRange(createExclusiveRange(key.getRow().toString()))
-            .fetchColumn(key.getColumnFamily().toString(), key.getColumnQualifier().toString());
+    ObjectScannerIterable<T> scanner = scan(context)
+        .addRange(createExclusiveRange(key.getRow().toString()))
+        .fetchColumn(key.getColumnFamily().toString(), key.getColumnQualifier().toString());
 
     return fetch(scanner);
   }

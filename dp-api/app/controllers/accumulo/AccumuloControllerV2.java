@@ -1,6 +1,6 @@
 /**
 *  Copyright 2021 Merck & Co., Inc. Kenilworth, NJ, USA.
-* 
+*
 * 	Licensed to the Apache Software Foundation (ASF) under one
 * 	or more contributor license agreements. See the NOTICE file
 * 	distributed with this work for additional information
@@ -8,10 +8,10 @@
 * 	to you under the Apache License, Version 2.0 (the
 * 	"License"); you may not use this file except in compliance
 * 	with the License. You may obtain a copy of the License at
-* 
+*
 * 	http://www.apache.org/licenses/LICENSE-2.0
-* 
-* 
+*
+*
 * 	Unless required by applicable law or agreed to in writing,
 * 	software distributed under the License is distributed on an
 * 	"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,7 +24,7 @@ package controllers.accumulo;
 import actions.AccumuloUserContext;
 import actions.Authenticated;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ClosableIterator;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
 import com.dataprofiler.util.objects.MetadataVersionObject;
 import com.dataprofiler.util.objects.VersionedMetadataObject;
 import com.dataprofiler.util.objects.DataScanSpec;
@@ -90,57 +90,57 @@ public class AccumuloControllerV2 extends Controller {
     SchemaGenerator schemaGenerator = new SchemaGenerator();
     return schemaGenerator.makeExecutableSchema(typeRegistry, runtimeWiring);
   }
-    
+
   private RuntimeWiring buildWiring(Context context, MetadataVersionObject version) {
-    // if wanting more ways to query metadata, make sure to add a dataFetcher (see 106, 114)
+    // if wanting more ways to query metadata, make sure to add a dataFetcher (see
+    // 106, 114)
     return RuntimeWiring.newRuntimeWiring()
-      .type(
-        newTypeWiring("Query")
-          .dataFetcher("metadataByDatasetName", datasetMetadataFetcherById(context, version))
-          .dataFetcher("metadata", datasetMetadataFetcherAll(context, version)))
-          .build();
+        .type(
+            newTypeWiring("Query")
+                .dataFetcher("metadataByDatasetName", datasetMetadataFetcherById(context, version))
+                .dataFetcher("metadata", datasetMetadataFetcherAll(context, version)))
+        .build();
   }
-    
+
   private DataFetcher<List<VersionedMetadataObject>> datasetMetadataFetcherAll(
-    Context context, MetadataVersionObject version) {
-    // enables getting all dataset metadata and returns to a data fetching environment for parsing
+      Context context, MetadataVersionObject version) {
+    // enables getting all dataset metadata and returns to a data fetching
+    // environment for parsing
     // out per schema def
     return dataFetchingEnvironment -> {
       return stream(
-        new VersionedMetadataObject().scanDatasets(context, version).spliterator(), false)
+          new VersionedMetadataObject().scanDatasets(context, version).spliterator(), false)
           .collect(toList());
     };
   }
-    
+
   private DataFetcher<VersionedMetadataObject> datasetMetadataFetcherById(
-    Context context, MetadataVersionObject version) {
-    // enables finding a specific dataset metadata by data_set name value (id) and returns a data
+      Context context, MetadataVersionObject version) {
+    // enables finding a specific dataset metadata by data_set name value (id) and
+    // returns a data
     // fetching environment
     return dataFetchingEnvironment -> {
-      String datasetName =
-        decodeForwardSlash(URLEncodingHelper.decode(dataFetchingEnvironment.getArgument("id")));
+      String datasetName = decodeForwardSlash(URLEncodingHelper.decode(dataFetchingEnvironment.getArgument("id")));
       if (logger.isTraceEnabled()) {
         logger.trace(format("fetching metadata for dataset: %s", datasetName));
       }
       return stream(
-        new VersionedMetadataObject().scanDatasets(context, version).spliterator(), false)
+          new VersionedMetadataObject().scanDatasets(context, version).spliterator(), false)
           .filter(e -> e.dataset_name.equals(datasetName))
           .findFirst()
           .orElse(null);
     };
   }
-    
+
   @BodyParser.Of(play.mvc.BodyParser.Json.class)
-  public Result graphql(Request req) {  // V2
+  public Result graphql(Request req) { // V2
     Context context = (Context) req.attrs().get(RulesOfUseHelper.USER_CONTEXT_TYPED_KEY);
     MetadataVersionObject version = context.getCurrentMetadataVersion();
-    
-    GraphQLSchema graphQLSchema =
-      buildSchema(
-          this.graphqlSdl, context, version); // Can't skirt this due to needing user context
+
+    GraphQLSchema graphQLSchema = buildSchema(
+        this.graphqlSdl, context, version); // Can't skirt this due to needing user context
     GraphQL bgraphql = GraphQL.newGraphQL(graphQLSchema).build();
-    String query =
-      req.body()
+    String query = req.body()
         .asJson()
         .get("query")
         .asText(); // get the target query from the body and pass as text
@@ -152,34 +152,34 @@ public class AccumuloControllerV2 extends Controller {
   @BodyParser.Of(BodyParser.TolerantText.class)
   public Result datawaverows(Request req) throws Exception {
     String json = req.body().asText();
-    
+
     DataScanSpec spec = DataScanSpec.fromJson(json);
-    
+
     String errorString = spec.checkRequiredFields();
-  
+
     if (errorString != null) {
       return badRequest(errorString);
     }
-    
+
     Context context = (Context) req.attrs().get(RulesOfUseHelper.USER_CONTEXT_TYPED_KEY);
     VersionedDataScanSpec versionedSpec = new VersionedDataScanSpec(context, spec);
-    
+
     Integer limit = versionedSpec.getLimit();
     if (versionedSpec.getPageSize() != null) {
       limit = versionedSpec.getPageSize();
     }
-    
+
     Rows rows = new Rows();
-    
+
     rows.setSortedColumns(versionedSpec.getMetadata().sortedColumnNames());
-    
-    try (ClosableIterator<DatawaveRowObject> iter =
-      new DatawaveRowObject().find(context, versionedSpec).closeableIterator()) {
+
+    try (ClosableIterator<DatawaveRowObject> iter = new DatawaveRowObject().find(context, versionedSpec)
+        .closeableIterator()) {
       while (iter.hasNext()) {
         DatawaveRowObject rowObj = iter.next();
-    
+
         rows.addRecord(rowObj.getRow());
-   
+
         if (rows.getCount().equals(limit)) {
           String endLocation = format("%d_%d", rowObj.getShard(), rowObj.getRowIdx());
           rows.setEndLocation(endLocation);
@@ -190,7 +190,7 @@ public class AccumuloControllerV2 extends Controller {
       e.printStackTrace();
       return internalServerError();
     }
-    
+
     return ok(Json.toJson(rows));
   }
 }

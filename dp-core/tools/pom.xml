@@ -16,7 +16,9 @@
   ~ limitations under the License.
   -->
 
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://maven.apache.org/POM/4.0.0"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <artifactId>dataprofiler-parent</artifactId>
@@ -30,7 +32,6 @@
   <name>Data Profiler Tools</name>
 
   <properties>
-    <dataprofiler-iterators.version>0.1.0</dataprofiler-iterators.version>
     <dataprofiler-util.version>0.1.0</dataprofiler-util.version>
     <commons-csv.version>1.9.0</commons-csv.version>
     <commons-text.version>1.10.0</commons-text.version>
@@ -50,11 +51,6 @@
       <groupId>com.dataprofiler</groupId>
       <artifactId>dataprofiler-util</artifactId>
       <version>${dataprofiler-util.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.dataprofiler</groupId>
-      <artifactId>dataprofiler-iterators</artifactId>
-      <version>${dataprofiler-iterators.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
@@ -145,7 +141,8 @@
       <artifactId>xpresso</artifactId>
       <version>0.9.0</version>
       <exclusions>
-        <!-- this might be too heavy handed, this antlr version is conflicting with the spark sql antrl version -->
+        <!-- this might be too heavy handed, this antlr version is conflicting with the spark sql
+        antrl version -->
         <exclusion>
           <groupId>org.antlr</groupId>
           <artifactId>antlr4-runtime</artifactId>

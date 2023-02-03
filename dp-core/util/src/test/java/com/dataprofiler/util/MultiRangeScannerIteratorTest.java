@@ -46,7 +46,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.dataprofiler.util.objects.AccumuloObject;
 import com.dataprofiler.util.objects.InvalidDataFormat;
-import com.dataprofiler.util.objects.MultiRangeScannerIterator;
+import com.dataprofiler.util.objects.iterators.MultiRangeScannerIterator;
 
 import org.apache.accumulo.core.client.Scanner;
 import org.apache.accumulo.core.data.Key;
@@ -57,7 +57,7 @@ import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 public class MultiRangeScannerIteratorTest {
-  
+
   private static final Value BLANK = new Value();
 
   // Simple AccumuloObject that echoes back the original
@@ -66,6 +66,7 @@ public class MultiRangeScannerIteratorTest {
   static class MyAO extends AccumuloObject<MyAO> {
     Key k;
     Value v;
+
     @Override
     public MyAO fromEntry(Entry<Key, Value> entry) {
       MyAO ao = new MyAO();
@@ -82,11 +83,12 @@ public class MultiRangeScannerIteratorTest {
 
   // Returns a Mockito'd Scanner that can loop over the chunks we provide.
   // Some caveats:
-  //  1. Sorting isn't considered here
-  //  2. This maps the user values to Keys by setting the Key's row value to be
-  //       `object#toString`
-  //  3. Don't modify the collections underneath the iterator. bad juju happens there
-  //  4. The scanner ignores any setting of the Range
+  // 1. Sorting isn't considered here
+  // 2. This maps the user values to Keys by setting the Key's row value to be
+  // `object#toString`
+  // 3. Don't modify the collections underneath the iterator. bad juju happens
+  // there
+  // 4. The scanner ignores any setting of the Range
   public static Scanner scannerOver(final List<? extends Collection<?>> chunks) {
     Scanner mockScanner = Mockito.mock(Scanner.class);
 
@@ -104,7 +106,7 @@ public class MultiRangeScannerIteratorTest {
                 .iterator();
           }
         });
-    
+
     doNothing().when(mockScanner).setRange(any());
 
     return mockScanner;
@@ -122,8 +124,7 @@ public class MultiRangeScannerIteratorTest {
     List<List<Integer>> blocks = ImmutableList.of(
         ImmutableList.of(1, 2, 3),
         ImmutableList.of(10, 20, 30),
-        ImmutableList.of(100, 200, 300)
-    );
+        ImmutableList.of(100, 200, 300));
 
     Scanner mockScanner = scannerOver(blocks);
 

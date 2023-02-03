@@ -24,14 +24,13 @@
 # This parses the pom files to get the version numbers that we need and then spits out the names of the
 # jar files that we need
 
-from pathlib import Path
-import sys
-import shutil
-import xml.etree.ElementTree as ET
-import subprocess
 import argparse
-import shlex
 import logging
+import shlex
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 
 
 class SubcommandHelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -71,13 +70,13 @@ LIB_DIR = PROJECT_DIR / 'lib'
 
 # Output directories for jars
 TOOL_JAR_DIR = LIB_DIR / 'tools'
-ITERATOR_JAR_DIR = LIB_DIR / 'iterators'
+UTIL_JAR_DIR = LIB_DIR / 'util'
 LASTMILE_JAR_DIR = LIB_DIR / 'lastmile'
 
 # List of jar directories
 LIB_JAR_DIRS = [
     TOOL_JAR_DIR,
-    ITERATOR_JAR_DIR,
+    UTIL_JAR_DIR,
     LASTMILE_JAR_DIR
 ]
 

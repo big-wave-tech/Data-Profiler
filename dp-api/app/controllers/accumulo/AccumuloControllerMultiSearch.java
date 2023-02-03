@@ -1,6 +1,6 @@
 /**
 *  Copyright 2021 Merck & Co., Inc. Kenilworth, NJ, USA.
-* 
+*
 * 	Licensed to the Apache Software Foundation (ASF) under one
 * 	or more contributor license agreements. See the NOTICE file
 * 	distributed with this work for additional information
@@ -8,10 +8,10 @@
 * 	to you under the Apache License, Version 2.0 (the
 * 	"License"); you may not use this file except in compliance
 * 	with the License. You may obtain a copy of the License at
-* 
+*
 * 	http://www.apache.org/licenses/LICENSE-2.0
-* 
-* 
+*
+*
 * 	Unless required by applicable law or agreed to in writing,
 * 	software distributed under the License is distributed on an
 * 	"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.dataprofiler.util.Context;
-import com.dataprofiler.util.iterators.ClosableIterator;
+import com.dataprofiler.util.objects.iterators.ClosableIterator;
 import com.dataprofiler.util.objects.ColumnCountIndexObject;
 import com.dataprofiler.util.objects.DataScanSpec;
 import com.dataprofiler.util.objects.VersionedDataScanSpec;
@@ -191,8 +191,7 @@ public class AccumuloControllerMultiSearch extends Controller {
 
     // Assume column level. Traverse each value map and intersect at this level
     if (groupingLevel == DataScanSpec.Level.COLUMN) {
-      Set<String> columnIntersection =
-          findResultsAtLevel(termLevelCounts, origTerms, DataScanSpec.Level.COLUMN);
+      Set<String> columnIntersection = findResultsAtLevel(termLevelCounts, origTerms, DataScanSpec.Level.COLUMN);
       if (columnIntersection.size() > 0) {
         // Filter out out negative matches not at our current level
         termLevelCounts
@@ -205,8 +204,7 @@ public class AccumuloControllerMultiSearch extends Controller {
                 });
       }
     } else if (groupingLevel == DataScanSpec.Level.TABLE) {
-      Set<String> tableIntersection =
-          findResultsAtLevel(termLevelCounts, origTerms, DataScanSpec.Level.TABLE);
+      Set<String> tableIntersection = findResultsAtLevel(termLevelCounts, origTerms, DataScanSpec.Level.TABLE);
       if (tableIntersection.size() > 0) {
         // Filter out out negative matches not at our current level
         termLevelCounts
@@ -253,8 +251,7 @@ public class AccumuloControllerMultiSearch extends Controller {
     Set<String> intersection_curr = new HashSet<>();
     Set<String> intersection_prev = new HashSet<>();
 
-    List<String> originalTerms =
-        new ArrayList<>(spec.getTerm().subList(0, spec.getTerm().size() - 1));
+    List<String> originalTerms = new ArrayList<>(spec.getTerm().subList(0, spec.getTerm().size() - 1));
 
     int numTerms = spec.getTerm().size();
     for (int i = 0; i < numTerms; i++) {
@@ -272,8 +269,8 @@ public class AccumuloControllerMultiSearch extends Controller {
         }
       }
 
-      try (ClosableIterator<ColumnCountIndexObject> iter =
-          new ColumnCountIndexObject().find(context, spec).closeableIterator()) {
+      try (ClosableIterator<ColumnCountIndexObject> iter = new ColumnCountIndexObject().find(context, spec)
+          .closeableIterator()) {
         while (iter.hasNext() && result.size() < limit) {
           ColumnCountIndexObject indexObj = iter.next();
 
@@ -346,19 +343,18 @@ public class AccumuloControllerMultiSearch extends Controller {
       findMostGranularScope(originalTerms, termLevelCounts, groupingLevel);
     }
 
-    Map<String, Map<String, ColumnCountIndexObject>> groupings =
-        groupTermsByLevel(termLevelCounts, groupingLevel);
+    Map<String, Map<String, ColumnCountIndexObject>> groupings = groupTermsByLevel(termLevelCounts, groupingLevel);
 
     // Create all possible search permutations
-    List<String> searchPermutations =
-        groupings.keySet().stream()
-            .filter(p -> !originalTerms.contains(p))
-            .map(lt -> String.join("", originalTerms) + lt)
-            .collect(toList());
+    List<String> searchPermutations = groupings.keySet().stream()
+        .filter(p -> !originalTerms.contains(p))
+        .map(lt -> String.join("", originalTerms) + lt)
+        .collect(toList());
 
     Map<String, JsonNode> merged = new HashMap<>();
 
-    // Merge search permutation results and update stats within elements on collisions
+    // Merge search permutation results and update stats within elements on
+    // collisions
     originalTerms.forEach(
         (searchTerm) -> {
           Map<String, ColumnCountIndexObject> indexLevels = groupings.get(searchTerm);
@@ -379,9 +375,8 @@ public class AccumuloControllerMultiSearch extends Controller {
     groupings.forEach(
         (term, v) -> {
           v.forEach(
-              (level, index) ->
-                  merged.merge(
-                      prefix + term + level, buildResultElement(index), AccumuloControllerMultiSearch::merge));
+              (level, index) -> merged.merge(
+                  prefix + term + level, buildResultElement(index), AccumuloControllerMultiSearch::merge));
         });
 
     // Collect search permutation mappings
@@ -391,8 +386,7 @@ public class AccumuloControllerMultiSearch extends Controller {
         (termAndLevel, v) -> {
           try {
             String[] values = mapper.readValue(v.get("value").toString(), String[].class);
-            List<String> valuesLower =
-                Arrays.stream(values).map(String::toLowerCase).collect(toList());
+            List<String> valuesLower = Arrays.stream(values).map(String::toLowerCase).collect(toList());
             termGrouping.merge(
                 String.join("||", valuesLower),
                 Collections.singletonList(v),

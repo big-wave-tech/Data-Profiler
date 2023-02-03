@@ -32,6 +32,8 @@ import com.dataprofiler.util.BasicAccumuloException;
 import com.dataprofiler.util.Const;
 import com.dataprofiler.util.Context;
 import com.dataprofiler.util.RangeCheckingVisitor;
+import com.dataprofiler.util.objects.iterators.rowData.DatawaveRowDataIter;
+import com.dataprofiler.util.objects.iterators.rowData.v2.RowAggregator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.util.Arrays;
@@ -63,8 +65,8 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
   private static final Text DELIMITER = new Text(Const.DELIMITER);
   private static final int DELIMITER_LEN = DELIMITER.getLength();
 
-  private static final TypeReference<Map<String, String>> staticTypeReference =
-      new TypeReference<Map<String, String>>() {};
+  private static final TypeReference<Map<String, String>> staticTypeReference = new TypeReference<Map<String, String>>() {
+  };
 
   private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -211,15 +213,13 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
   public ObjectScannerIterable<DatawaveRowObject> find(
       Context context, VersionedDataScanSpec spec) {
 
-    ObjectScannerIterable<DatawaveRowObject> scanner =
-        super.scan(context).setBatch(spec.getPageSize() == null);
+    ObjectScannerIterable<DatawaveRowObject> scanner = super.scan(context).setBatch(spec.getPageSize() == null);
 
     if (spec.getPageSize() != null) {
       scanner.setMultiRangeScanner();
-      TreeSet<DatawaveRowShardIndexObject> shardRanges =
-          new TreeSet<>(
-              DatawaveRowShardIndexObject.shardIndicesFor(
-                  spec.getDataset(), spec.getTable_id(), context));
+      TreeSet<DatawaveRowShardIndexObject> shardRanges = new TreeSet<>(
+          DatawaveRowShardIndexObject.shardIndicesFor(
+              spec.getDataset(), spec.getTable_id(), context));
       long[] startComponents = parseStartLocationComponents(spec);
       long rowShard = startComponents[0];
       long rowIndex = startComponents[1];
@@ -227,12 +227,11 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
           .map(DatawaveRowShardIndexObject::toRange)
           .forEach(scanner::addRange);
     } else {
-      List<Range> ranges =
-          DatawaveRowShardIndexObject.shardIndicesFor(
-                  spec.getDataset(), spec.getTable_id(), context)
-              .stream()
-              .map(DatawaveRowShardIndexObject::toRowDataRange)
-              .collect(Collectors.toList());
+      List<Range> ranges = DatawaveRowShardIndexObject.shardIndicesFor(
+          spec.getDataset(), spec.getTable_id(), context)
+          .stream()
+          .map(DatawaveRowShardIndexObject::toRowDataRange)
+          .collect(Collectors.toList());
       if (ranges.isEmpty()) {
         throw new IllegalStateException(
             "Could not find any shard indices for " + spec.getDataset() + ":" + spec.getTable_id());
@@ -252,9 +251,7 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
   private void configureQueryIterator(
       ObjectScannerIterable<DatawaveRowObject> scanner, VersionedDataScanSpec spec) {
     checkQuery(spec.getV2Query());
-    IteratorSetting iter =
-        new IteratorSetting(
-            21, "QueryIterator", "com.dataprofiler.iterators.rowData.v2.RowAggregator");
+    IteratorSetting iter = new IteratorSetting(21, "QueryIterator", RowAggregator.class);
     iter.addOption("query", Expressions.json(spec.getV2Query()));
 
     if (spec.getReturnFullValues()) {
@@ -269,9 +266,7 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
   private void configureRowDataIterator(
       ObjectScannerIterable<DatawaveRowObject> scanner, VersionedDataScanSpec spec) {
     scanner.fetchColumnFamily(Const.COL_FAM_DATA);
-    IteratorSetting iter =
-        new IteratorSetting(
-            21, "RowDataIter", "com.dataprofiler.iterators.rowData.DatawaveRowDataIter");
+    IteratorSetting iter = new IteratorSetting(21, "RowDataIter", DatawaveRowDataIter.class);
 
     if (spec.getReturnFullValues()) {
       iter.addOption("hash_large_values", Boolean.toString((!spec.getReturnFullValues())));
@@ -301,12 +296,13 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
       DataScanSpec spec,
       SortedSet<DatawaveRowShardIndexObject> allShards) {
 
-    DatawaveRowShardIndexObject startShard =
-        new DatawaveRowShardIndexObject(rowShard, spec.getDataset(), spec.getTable(), rowIdx);
+    DatawaveRowShardIndexObject startShard = new DatawaveRowShardIndexObject(rowShard, spec.getDataset(),
+        spec.getTable(), rowIdx);
 
     SortedSet<DatawaveRowShardIndexObject> tail = allShards.tailSet(startShard);
 
-    /* if empty, we're probably in the last shard
+    /*
+     * if empty, we're probably in the last shard
      *
      * otherwise, we'll need to add the starting document
      * to the head of the set, because we've skipped over
@@ -332,7 +328,7 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
       startRowIdx = Long.parseLong(startLocationComponents[1]);
     }
 
-    return new long[] {startShard, startRowIdx};
+    return new long[] { startShard, startRowIdx };
   }
 
   private String[] removeCarriageReturn(String[] array) {
@@ -351,9 +347,7 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
 
     scanner.fetchColumnFamily(Const.COL_FAM_DATA);
 
-    IteratorSetting iter =
-        new IteratorSetting(
-            21, "RowDataIter", "com.dataprofiler.iterators.rowData.DatawaveRowDataIter");
+    IteratorSetting iter = new IteratorSetting(21, "RowDataIter", DatawaveRowDataIter.class);
     scanner.addScanIterator(iter);
 
     return scanner;
@@ -393,8 +387,7 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
   @Override
   public Key createAccumuloKey() throws InvalidDataFormat {
 
-    byte[] rowId =
-        joinKeyComponents(datasetName.getBytes(), tableName.getBytes(), longLex.encode(shard));
+    byte[] rowId = joinKeyComponents(datasetName.getBytes(), tableName.getBytes(), longLex.encode(shard));
     byte[] colQual = joinKeyComponents(longLex.encode(rowIdx), columnName.getBytes());
     return new Key(new Text(rowId), COL_FAM_DATA, new Text(colQual), new Text(visibility));
   }
@@ -425,9 +418,8 @@ public class DatawaveRowObject extends VersionedPurgableDatasetObject<DatawaveRo
   public void bulkPurgeTable(Context context, String datasetName, String tableName, String tableId)
       throws BasicAccumuloException {
     Text start = new Text(joinKeyComponentsEndDelimited(datasetName, tableId));
-    Text end =
-        new Text(
-            joinKeyComponentsEndDelimited(datasetName, tableId) + longLex.encode(Long.MAX_VALUE));
+    Text end = new Text(
+        joinKeyComponentsEndDelimited(datasetName, tableId) + longLex.encode(Long.MAX_VALUE));
     bulkPurgeRange(context, start, end);
   }
 

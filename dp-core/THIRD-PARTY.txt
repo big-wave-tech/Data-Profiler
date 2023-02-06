@@ -1,5 +1,5 @@
 
-Lists of 441 third-party dependencies.
+Lists of 442 third-party dependencies.
      (Public Domain) AOP alliance (aopalliance:aopalliance:1.0 - http://aopalliance.sourceforge.net)
      (The Apache Software License, Version 2.0) reload4j (ch.qos.reload4j:reload4j:1.2.22 - https://reload4j.qos.ch)
      (Apache License, Version 2.0) amazon-redshift-jdbc-driver (com.amazon.redshift:redshift-jdbc42:2.0.0.4 - https://github.com/aws/amazon-redshift-jdbc-driver)
@@ -178,6 +178,7 @@ Lists of 441 third-party dependencies.
      (Apache License, Version 2.0) Apache Accumulo Core (org.apache.accumulo:accumulo-core:2.0.1 - https://accumulo.apache.org/accumulo-core)
      (Apache License, Version 2.0) Apache Accumulo GC Server (org.apache.accumulo:accumulo-gc:2.0.1 - https://accumulo.apache.org/accumulo-gc)
      (Apache License, Version 2.0) Apache Accumulo Hadoop MapReduce (org.apache.accumulo:accumulo-hadoop-mapreduce:2.0.1 - https://accumulo.apache.org/accumulo-hadoop-mapreduce)
+     (Apache License, Version 2.0) Apache Accumulo Iterator Test Harness (org.apache.accumulo:accumulo-iterator-test-harness:2.0.1 - https://accumulo.apache.org/accumulo-iterator-test-harness)
      (Apache License, Version 2.0) Apache Accumulo Master Server (org.apache.accumulo:accumulo-master:2.0.1 - https://accumulo.apache.org/accumulo-master)
      (Apache License, Version 2.0) Apache Accumulo MiniCluster (org.apache.accumulo:accumulo-minicluster:2.0.1 - https://accumulo.apache.org/accumulo-minicluster)
      (Apache License, Version 2.0) Apache Accumulo Monitor Server (org.apache.accumulo:accumulo-monitor:2.0.1 - https://accumulo.apache.org/accumulo-monitor)

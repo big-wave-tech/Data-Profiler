@@ -55,6 +55,12 @@ under the License.
       <artifactId>dataprofiler-query-lang</artifactId>
       <version>0.1.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.accumulo</groupId>
+      <artifactId>accumulo-iterator-test-harness</artifactId>
+      <version>2.0.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 

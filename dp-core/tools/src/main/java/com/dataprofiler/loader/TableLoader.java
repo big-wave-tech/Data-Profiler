@@ -47,6 +47,7 @@ import com.dataprofiler.util.Const.LoadType;
 import com.dataprofiler.util.Const.Origin;
 import com.dataprofiler.util.Const.SortOrder;
 import com.dataprofiler.util.Context;
+import com.dataprofiler.util.SolrTokenizer;
 import com.dataprofiler.util.objects.ColumnCountIndexObject;
 import com.dataprofiler.util.objects.ColumnCountObject;
 import com.dataprofiler.util.objects.DatawaveRowIndexObject;

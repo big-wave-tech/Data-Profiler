@@ -30,6 +30,9 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.apache.accumulo.core.data.ByteSequence;
 import org.apache.accumulo.core.data.Key;
@@ -85,8 +88,14 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
     this.keyBuffer = new LinkedList<>(other.keyBuffer);
     this.valueBuffer = new LinkedList<>(other.valueBuffer);
 
-    this.seekedRange = new org.apache.accumulo.core.data.Range(other.seekedRange);
-    this.seekedColumnFamilies = other.seekedColumnFamilies;
+    if (other.seekedRange != null) {
+      this.seekedRange = new Range(other.seekedRange);
+    }
+
+    if (other.seekedColumnFamilies != null) {
+      this.seekedColumnFamilies = new LinkedList<ByteSequence>(other.seekedColumnFamilies);
+    }
+
     this.seekedColumnFamiliesInclusive = other.seekedColumnFamiliesInclusive;
 
     // Copy the source
@@ -257,7 +266,12 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
 
   protected void aggregateColumnIndexes() {
     // Get final sum of the current counts
-    Optional<Long> sum = currentColumnIndexes.stream().map(ColumnCountIndexObject::getCount).reduce(Long::sum);
+
+    Optional<Long> sum = currentColumnIndexes.stream().filter(distinctByValue(index -> index.getValue()))
+        .map(ColumnCountIndexObject::getCount).reduce(Long::sum);
+
+    // Optional<Long> sum =
+    // currentColumnIndexes.stream().map(ColumnCountIndexObject::getCount).reduce(Long::sum);
 
     if (sum.isPresent()) {
       ColumnCountIndexObject newColCntIdx = cloneColumnCountIndex(currentColumnIndexes.getLast(), sum.get());
@@ -271,6 +285,11 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
         valueBuffer.add(new Value());
       }
     }
+  }
+
+  private static <T> Predicate<T> distinctByValue(Function<? super T, ?> keyExtractor) {
+    Map<Object, Boolean> seen = new ConcurrentHashMap<>();
+    return t -> seen.putIfAbsent(keyExtractor.apply(t), Boolean.TRUE) == null;
   }
 
   private boolean isInColumnCountGroup(ColumnCountObject columnCount) {

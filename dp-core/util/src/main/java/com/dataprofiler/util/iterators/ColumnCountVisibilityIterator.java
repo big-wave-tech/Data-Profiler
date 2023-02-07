@@ -35,6 +35,10 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
 import org.apache.accumulo.core.data.ByteSequence;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Range;
@@ -68,7 +72,8 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
   private Key topKey = null;
   private Value topValue = null;
 
-  public ColumnCountVisibilityIterator() {}
+  public ColumnCountVisibilityIterator() {
+  }
 
   public ColumnCountVisibilityIterator(SortedKeyValueIterator<Key, Value> source) {
     this.setSource(source);
@@ -169,8 +174,7 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
         keyBuffer.getFirst().getColumnFamily(columnFamilyHolder);
         keyBuffer.getFirst().getColumnQualifier(columnQualifierHolder);
         keyBuffer.getFirst().getColumnVisibility(columnVisibilityHolder);
-        this.topKey =
-            new Key(rowHolder, columnFamilyHolder, columnQualifierHolder, columnVisibilityHolder);
+        this.topKey = new Key(rowHolder, columnFamilyHolder, columnQualifierHolder, columnVisibilityHolder);
         this.topValue = new Value(valueBuffer.getFirst());
       } else {
         this.topKey = null;
@@ -189,8 +193,7 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
 
       switch (key.getColumnFamily().toString()) {
         case Const.COL_FAM_DATA:
-          ColumnCountObject colCnt =
-              new ColumnCountObject().fromEntry(Maps.immutableEntry(key, value));
+          ColumnCountObject colCnt = new ColumnCountObject().fromEntry(Maps.immutableEntry(key, value));
 
           if (currentColumnCounts.isEmpty()) {
             currentColumnCounts.add(colCnt);
@@ -207,8 +210,7 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
         case Const.INDEX_DATASET:
         case Const.INDEX_TABLE:
         case Const.INDEX_COLUMN:
-          ColumnCountIndexObject colCntIdx =
-              new ColumnCountIndexObject().fromEntry(Maps.immutableEntry(key, value));
+          ColumnCountIndexObject colCntIdx = new ColumnCountIndexObject().fromEntry(Maps.immutableEntry(key, value));
           if (currentColumnIndexes.isEmpty()) {
             currentColumnIndexes.add(colCntIdx);
           } else if (!isInColumnCountIndexGroup(colCntIdx)) {
@@ -246,8 +248,7 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
 
   protected void aggregateColumnCounts() {
     // Get final sum of the current counts
-    Optional<Long> sum =
-        currentColumnCounts.stream().map(ColumnCountObject::getCount).reduce(Long::sum);
+    Optional<Long> sum = currentColumnCounts.stream().map(ColumnCountObject::getCount).reduce(Long::sum);
 
     if (sum.isPresent()) {
       ColumnCountObject newColumnCount = cloneColumnCount(currentColumnCounts.getLast(), sum.get());
@@ -259,12 +260,11 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
 
   protected void aggregateColumnIndexes() {
     // Get final sum of the current counts
-    Optional<Long> sum =
-        currentColumnIndexes.stream().map(ColumnCountIndexObject::getCount).reduce(Long::sum);
+    Optional<Long> sum = currentColumnIndexes.stream().filter(distinctByValue(index -> index.getValue()))
+        .map(ColumnCountIndexObject::getCount).reduce(Long::sum);
 
     if (sum.isPresent()) {
-      ColumnCountIndexObject newColCntIdx =
-          cloneColumnCountIndex(currentColumnIndexes.getLast(), sum.get());
+      ColumnCountIndexObject newColCntIdx = cloneColumnCountIndex(currentColumnIndexes.getLast(), sum.get());
 
       clearBuffers();
       keyBuffer.add(newColCntIdx.createAccumuloKey());
@@ -275,6 +275,11 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
         valueBuffer.add(new Value());
       }
     }
+  }
+
+  private static <T> Predicate<T> distinctByValue(Function<? super T, ?> keyExtractor) {
+    Map<Object, Boolean> seen = new ConcurrentHashMap<>();
+    return t -> seen.putIfAbsent(keyExtractor.apply(t), Boolean.TRUE) == null;
   }
 
   private boolean isInColumnCountGroup(ColumnCountObject columnCount) {
@@ -294,9 +299,8 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
   }
 
   private ColumnCountObject cloneColumnCount(ColumnCountObject other, Long count) {
-    ColumnCountObject result =
-        new ColumnCountObject(
-            other.getDataset(), other.getTableId(), other.getColumn(), other.getValue(), count);
+    ColumnCountObject result = new ColumnCountObject(
+        other.getDataset(), other.getTableId(), other.getColumn(), other.getValue(), count);
 
     result.sortOrder = other.sortOrder;
     result.setVisibility(other.getVisibility());
@@ -304,24 +308,22 @@ public class ColumnCountVisibilityIterator extends WrappingIterator implements O
   }
 
   private ColumnCountIndexObject cloneColumnCountIndex(ColumnCountIndexObject other, Long count) {
-    ColumnCountIndexObject result =
-        new ColumnCountIndexObject(
-            other.getDataset(),
-            other.getTable(),
-            other.getTableId(),
-            other.getColumn(),
-            other.getValue(),
-            other.getNormalizedValue(),
-            count);
+    ColumnCountIndexObject result = new ColumnCountIndexObject(
+        other.getDataset(),
+        other.getTable(),
+        other.getTableId(),
+        other.getColumn(),
+        other.getValue(),
+        other.getNormalizedValue(),
+        count);
 
     result.setIndex(other.getIndex());
     result.setVisibility(other.getVisibility());
     return result;
   }
 
-  protected void
-      clearBuffers() { // Clear the list if it's under a given size, otherwise just make a new
-                       // object
+  protected void clearBuffers() { // Clear the list if it's under a given size, otherwise just make a new
+                                  // object
     // and let the JVM GC clean up the mess so we don't waste a bunch of time
     // iterating over the list just to clear it.
     if (keyBuffer.size() < 10) {

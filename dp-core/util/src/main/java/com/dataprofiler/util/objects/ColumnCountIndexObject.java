@@ -33,6 +33,7 @@ import com.dataprofiler.util.iterators.ColumnCountVisibilityIterator;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,6 +41,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.accumulo.core.client.BatchDeleter;
 import org.apache.accumulo.core.client.IteratorSetting;
@@ -56,12 +58,13 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   private static final String accumuloTable = Const.ACCUMULO_INDEX_TABLE_ENV_KEY;
 
   // Cell Level Visibility Iterator Setting
-  private static final IteratorSetting visibilityIteratorSetting =
-      new IteratorSetting(21, "colCntVisItr", ColumnCountVisibilityIterator.class);
+  private static final IteratorSetting visibilityIteratorSetting = new IteratorSetting(21, "colCntVisItr",
+      ColumnCountVisibilityIterator.class);
 
   private String dataset;
   private String tableId;
-  // This is the table name - but it's called table for historical reasons (and old data has this
+  // This is the table name - but it's called table for historical reasons (and
+  // old data has this
   // stored
   // in accumulo so it needs to not change).
   private String table;
@@ -77,20 +80,14 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
     super(accumuloTable);
   }
 
-  public ColumnCountIndexObject(
-      String dataset,
-      String tableName,
-      String tableId,
-      String column,
-      String value,
-      String normalizedValue,
-      Long count) {
+  public ColumnCountIndexObject(String dataset, String tableName, String tableId, String column,
+      String value, String normalizedValue, Long count) {
     this(dataset, tableName, tableId, column, value, count);
     this.normalizedValue = normalizedValue;
   }
 
-  public ColumnCountIndexObject(
-      String dataset, String tableName, String tableId, String column, String value, Long count) {
+  public ColumnCountIndexObject(String dataset, String tableName, String tableId, String column,
+      String value, Long count) {
     super(accumuloTable);
     this.dataset = dataset;
     this.tableId = tableId;
@@ -105,7 +102,8 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
     ColumnCountIndexObject c = null;
     try {
       c = mapper.readValue(entry.getValue().get(), this.getClass());
-      // This handles old records that only store the table and not the table id. For records of
+      // This handles old records that only store the table and not the table id. For
+      // records of
       // that
       // age the table name is the table id, so this works correctly.
       if (c.tableId == null) {
@@ -117,6 +115,8 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
         c.table = activeTables.get(key);
       }
       c.updatePropertiesFromEntry(entry);
+      c.normalizedValue = c.normalizedValue.substring(0, Math.min(c.normalizedValue.length(), 100));
+      c.value = this.findSurroundingWords(c.value.substring(0, Math.min(c.value.length(), 100)), c.normalizedValue, 3);
     } catch (IOException e) {
       throw new InvalidDataFormat(e.toString());
     }
@@ -124,12 +124,24 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
     return c;
   }
 
+  private String findSurroundingWords(String phrase, String text, int n) {
+
+    String word = "\\W*([\\w]*)";
+    String s1 = MessageFormat.format("{0}\\W*{1}{2}", word.repeat(n), text, word.repeat(n));
+    Matcher m = Pattern.compile(s1, Pattern.CASE_INSENSITIVE).matcher(phrase);
+
+    if (m.find()) {
+      return m.group();
+    }
+
+    return phrase;
+  }
+
   private ObjectScannerIterable<ColumnCountIndexObject> addActiveTableFilter(
       ObjectScannerIterable<ColumnCountIndexObject> scanner, Map<String, String> activeTables) {
     this.activeTables = activeTables;
-    IteratorSetting iter =
-        new IteratorSetting(
-            100, "filterActiveTables", "com.dataprofiler.iterators.indexData.ActiveTableFilter");
+    IteratorSetting iter = new IteratorSetting(100, "filterActiveTables",
+        "com.dataprofiler.iterators.indexData.ActiveTableFilter");
     String activeTableConf = String.join("__&&__", activeTables.keySet());
     iter.addOption("active_tables", activeTableConf);
     scanner.addScanIterator(iter);
@@ -137,21 +149,19 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   }
 
   /**
-   * * Find entries in the index matching the provided term. This will only return tables in the map
+   * * Find entries in the index matching the provided term. This will only return
+   * tables in the map
    * of provided tables (map should be tableids -> table names).
    *
-   * @param context dataprofiler context
-   * @param activeTables map of table ids -> table names for tables that should be returned
-   * @param term term to search for
-   * @param exclusive whether to match the term exacly or as a prefix
+   * @param context      dataprofiler context
+   * @param activeTables map of table ids -> table names for tables that should be
+   *                     returned
+   * @param term         term to search for
+   * @param exclusive    whether to match the term exacly or as a prefix
    * @return
    */
-  public ObjectScannerIterable<ColumnCountIndexObject> find(
-      Context context,
-      Map<String, String> activeTables,
-      String term,
-      String index,
-      Boolean exclusive) {
+  public ObjectScannerIterable<ColumnCountIndexObject> find(Context context,
+      Map<String, String> activeTables, String term, String index, Boolean exclusive) {
     Range range;
 
     term = term.toLowerCase();
@@ -162,16 +172,12 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
       range = new Range(new Range(term, term + Const.HIGH_BYTE));
     }
 
-    return addActiveTableFilter(
-        scan(context)
-            .addRange(range)
-            .fetchColumnFamily(index)
-            .addScanIterator(visibilityIteratorSetting),
-        activeTables);
+    return addActiveTableFilter(scan(context).addRange(range).fetchColumnFamily(index)
+        .addScanIterator(visibilityIteratorSetting), activeTables);
   }
 
-  public ObjectScannerIterable<ColumnCountIndexObject> find(
-      Context context, VersionedDataScanSpec spec) {
+  public ObjectScannerIterable<ColumnCountIndexObject> find(Context context,
+      VersionedDataScanSpec spec) {
 
     this.activeTables = spec.getActiveTables();
 
@@ -197,8 +203,7 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
           columnFam = Const.INDEX_COLUMN;
           if (spec.getSubstring_match() == true) {
             rowId = joinKeyComponents(spec.getDataset(), spec.getTable(), spec.getColumn());
-            IteratorSetting substringRegex =
-                new IteratorSetting(100, "substringMatchFilter", RegExFilter.class);
+            IteratorSetting substringRegex = new IteratorSetting(100, "substringMatchFilter", RegExFilter.class);
             substringRegex.addOption(RegExFilter.ROW_REGEX, Pattern.quote(term));
             substringRegex.addOption(RegExFilter.MATCH_SUBSTRING, "true");
             scanner.addScanIterator(substringRegex);
@@ -207,8 +212,7 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
           }
         } else if (spec.getSubstring_match() == true) {
           rowId = joinKeyComponents(spec.getDataset(), spec.getTable());
-          IteratorSetting substringRegex =
-              new IteratorSetting(100, "substringMatchFilter", RegExFilter.class);
+          IteratorSetting substringRegex = new IteratorSetting(100, "substringMatchFilter", RegExFilter.class);
           substringRegex.addOption(RegExFilter.ROW_REGEX, Pattern.quote(term));
           substringRegex.addOption(RegExFilter.MATCH_SUBSTRING, "true");
           scanner.addScanIterator(substringRegex);
@@ -234,7 +238,8 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   }
 
   /**
-   * Value for Column Count Index is the JSON object that contains: * dataset * table * value *
+   * Value for Column Count Index is the JSON object that contains: * dataset *
+   * table * value *
    * count
    *
    * @return Accumulo Value
@@ -247,18 +252,20 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   /**
    * Keys for the Column Count Index Objects are
    *
-   * <p>RowID: value
+   * <p>
+   * RowID: value
    *
-   * <p>Col Fam: dataset DELIM tableId
+   * <p>
+   * Col Fam: dataset DELIM tableId
    *
-   * <p>Col Qual: dataset DELIM tableId DELIM column
+   * <p>
+   * Col Qual: dataset DELIM tableId DELIM column
    *
    * @return Accumulo Key
    */
   @Override
   public Key createAccumuloKey() throws InvalidDataFormat {
-    String valueNorm =
-        this.normalizedValue == null ? value.toLowerCase().trim() : this.normalizedValue;
+    String valueNorm = this.normalizedValue == null ? value.toLowerCase().trim() : this.normalizedValue;
     String rowId;
     String colFam;
 
@@ -298,8 +305,10 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   @Override
   public void bulkPurgeTable(Context context, String datasetName, String tableName, String tableId)
       throws BasicAccumuloException {
-    // We can only bulk purge some data - other we have to batch purge. We are going to do this
-    // all from one interface - maybe this is a bad idea, but I want to do this simply and correctly
+    // We can only bulk purge some data - other we have to batch purge. We are going
+    // to do this
+    // all from one interface - maybe this is a bad idea, but I want to do this
+    // simply and correctly
     // rather than fast.
 
     // This will take out the table and column level indexes
@@ -415,39 +424,14 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
 
   @Override
   public String toString() {
-    return "ColumnCountIndexObject{"
-        + "dataset='"
-        + dataset
-        + '\''
-        + ", tableId='"
-        + tableId
-        + '\''
-        + ", table='"
-        + table
-        + '\''
-        + ", column='"
-        + column
-        + '\''
-        + ", value='"
-        + value
-        + '\''
-        + ", normalizedValue='"
-        + normalizedValue
-        + '\''
-        + ", count="
-        + count
-        + ", index="
-        + index
-        + ", activeTables="
-        + activeTables
-        + '}';
+    return "ColumnCountIndexObject{" + "dataset='" + dataset + '\'' + ", tableId='" + tableId + '\''
+        + ", table='" + table + '\'' + ", column='" + column + '\'' + ", value='" + value + '\''
+        + ", normalizedValue='" + normalizedValue + '\'' + ", count=" + count + ", index=" + index
+        + ", activeTables=" + activeTables + '}';
   }
 
   public enum IndexType {
-    GLOBAL,
-    DATASET,
-    TABLE,
-    COLUMN;
+    GLOBAL, DATASET, TABLE, COLUMN;
 
     private static final Map<String, IndexType> valueMap = new HashMap<>();
 

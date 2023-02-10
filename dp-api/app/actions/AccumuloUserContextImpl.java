@@ -52,59 +52,57 @@ public class AccumuloUserContextImpl extends Action<AccumuloUserContext> {
 
   @Override
   public CompletionStage<Result> call(Http.Request req) {
+    long start = System.nanoTime();
     com.dataprofiler.util.Context rootContext;
     com.dataprofiler.util.Context userContext;
     try {
       rootContext = getContext();
       userContext = getContextForUser(req);
       logger.debug(
-        "setting rootContext: " +
-        rootContext +
-        " auths: " +
-        rootContext.getAuthorizations()
-      );
+          "setting rootContext: " +
+              rootContext +
+              " auths: " +
+              rootContext.getAuthorizations());
       logger.debug(
-        "setting userContext: " +
-        userContext +
-        " auths: " +
-        userContext.getAuthorizations()
-      );
+          "setting userContext: " +
+              userContext +
+              " auths: " +
+              userContext.getAuthorizations());
     } catch (BasicAccumuloException e) {
       Result internalError = Results.internalServerError(
-        Json.toJson("Failed to get Accumulo " + "context for user")
-      );
+          Json.toJson("Failed to get Accumulo " + "context for user"));
       return CompletableFuture.completedFuture(internalError);
     }
 
     logger.debug("setting new contexts");
+    long end = System.nanoTime();
+    logger.debug(
+        "AccumuloUserContextImpl call took: " + (end - start) / 1000000 + "ms");
     return delegate.call(
-      req
-        .addAttr(RulesOfUseHelper.ROOT_CONTEXT_TYPED_KEY, rootContext)
-        .addAttr(RulesOfUseHelper.USER_CONTEXT_TYPED_KEY, userContext)
-    );
+        req
+            .addAttr(RulesOfUseHelper.ROOT_CONTEXT_TYPED_KEY, rootContext)
+            .addAttr(RulesOfUseHelper.USER_CONTEXT_TYPED_KEY, userContext));
   }
 
   public com.dataprofiler.util.Context getContextForUser(Http.Request req)
-    throws BasicAccumuloException {
+      throws BasicAccumuloException {
     getContext();
 
     RulesOfUseHelper.UserAttributes ua = (UserAttributes) req
-      .attrs()
-      .get(RulesOfUseHelper.ROU_ATTRIBUTES_TYPED_KEY);
+        .attrs()
+        .get(RulesOfUseHelper.ROU_ATTRIBUTES_TYPED_KEY);
     logger.debug(
-      "creating new context for user: " +
-      ua.getUsername() +
-      " with auths: " +
-      ua.currentAsAuthorizations()
-    );
+        "creating new context for user: " +
+            ua.getUsername() +
+            " with auths: " +
+            ua.currentAsAuthorizations());
     return new com.dataprofiler.util.Context(
-      context,
-      ua.currentAsAuthorizations()
-    );
+        context,
+        ua.currentAsAuthorizations());
   }
 
   public com.dataprofiler.util.Context getContext()
-    throws BasicAccumuloException {
+      throws BasicAccumuloException {
     if (context == null) {
       logger.debug("creating new context from config");
       context = new com.dataprofiler.util.Context(this.config);

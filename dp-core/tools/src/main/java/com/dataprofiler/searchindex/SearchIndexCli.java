@@ -80,7 +80,8 @@ public class SearchIndexCli {
 
       // Ge the list of current datasets and the corresponding tables
       Collection<String> datasets = datasetMetadataProvider.fetchAllDatasets();
-      Collection<String> tables = datasets.stream().flatMap(d -> tableMetadataProvider.fetchAllTableIds(d).stream())
+      Collection<String> tables = datasets.stream()
+          .flatMap(d -> tableMetadataProvider.fetchAllTableIds(d).stream())
           .collect(Collectors.toCollection(() -> new TreeSet<String>()));
 
       logger.info("Found the following tables IDs:");

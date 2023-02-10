@@ -63,12 +63,28 @@ public class TableMetadataProvider extends VersionLineageService {
   public Set<String> fetchAllTables(String dataset) {
     Instant start = now();
     MetadataVersionObject version = context.getCurrentMetadataVersion();
-    Set<String> tables =
-        stream(
-                new VersionedMetadataObject().scanTables(context, version, dataset).spliterator(),
-                false)
-            .map(VersionedMetadataObject::getTable_name)
-            .collect(toSet());
+    Set<String> tables = stream(
+        new VersionedMetadataObject().scanTables(context, version, dataset).spliterator(),
+        false)
+        .map(VersionedMetadataObject::getTable_name)
+        .collect(toSet());
+    Instant end = now();
+    if (logger.isDebugEnabled()) {
+      Duration duration = between(start, end);
+      logger.debug(
+          format("fetched %s table names for %s time: %s", tables.size(), dataset, duration));
+    }
+    return tables;
+  }
+
+  public Set<String> fetchAllTableIds(String dataset) {
+    Instant start = now();
+    MetadataVersionObject version = context.getCurrentMetadataVersion();
+    Set<String> tables = stream(
+        new VersionedMetadataObject().scanTables(context, version, dataset).spliterator(),
+        false)
+        .map(VersionedMetadataObject::getTable_id)
+        .collect(toSet());
     Instant end = now();
     if (logger.isDebugEnabled()) {
       Duration duration = between(start, end);
@@ -86,11 +102,10 @@ public class TableMetadataProvider extends VersionLineageService {
   public List<VersionedMetadataObject> fetchVersionMetadataForAllTables(
       String dataset, MetadataVersionObject version) {
     Instant start = now();
-    List<VersionedMetadataObject> tables =
-        stream(
-                new VersionedMetadataObject().scanTables(context, version, dataset).spliterator(),
-                false)
-            .collect(toList());
+    List<VersionedMetadataObject> tables = stream(
+        new VersionedMetadataObject().scanTables(context, version, dataset).spliterator(),
+        false)
+        .collect(toList());
     Instant end = now();
     if (logger.isDebugEnabled()) {
       Duration duration = between(start, end);
@@ -120,8 +135,8 @@ public class TableMetadataProvider extends VersionLineageService {
   public List<VersionedMetadataObject> fetchTableVersionLineage(
       String dataset, String table, Integer maxVersions) throws MetadataScanException {
     Instant start = now();
-    ObjectScannerIterable<VersionedMetadataObject> scanner =
-        new VersionedMetadataObject().scanTableAllVersions(context, dataset, table);
+    ObjectScannerIterable<VersionedMetadataObject> scanner = new VersionedMetadataObject().scanTableAllVersions(context,
+        dataset, table);
     List<VersionedMetadataObject> list = scanLineage(scanner);
     int numFound = list.size();
     list = list.subList(0, min(numFound, maxVersions + 1));

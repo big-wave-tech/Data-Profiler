@@ -45,8 +45,6 @@ public class SearchIndexCli {
       SearchIndexCli exporter = new SearchIndexCli();
       exporter.execute(args);
     } catch (SearchIndexException e) {
-      e.printStackTrace();
-      logger.warn(e.toString());
       System.exit(1);
     }
     System.exit(0);

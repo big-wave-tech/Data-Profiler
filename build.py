@@ -97,7 +97,8 @@ PYTHON_OUTPUT_DIRS = [
 # List of projects depending on java projects
 JAR_OUTPUT_DIRS = [
     PROJECT_DIR / 'dp-api',
-    PROJECT_DIR / 'infrastructure/standalone/conf/backend'
+    PROJECT_DIR / 'infrastructure/standalone/conf/backend',
+    PROJECT_DIR / 'infrastructure/docker/search-indexer'
 ]
 
 JAR_OUTPUT_DIRS.extend(PYTHON_OUTPUT_DIRS)

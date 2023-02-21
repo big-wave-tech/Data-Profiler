@@ -33,8 +33,15 @@ const HeaderControls = (props) => {
   const [rowViewerState, rowViewerDispatch] = useContext(RowViewerContext)
   const { dataprofiler } = props
 
+  // DOWNLOAD ROWS VARIABLE FOR A TAG HREF
+  const data =
+    'text/json;charset=utf-8,' +
+    encodeURIComponent(JSON.stringify(rowViewerState.rows))
+
+  // not used
   const handleDownloadTableClick = (event) => {
     if (event) {
+      console.log('DOWNLOAD:', rowViewerState.rows)
       event.preventDefault()
     }
 
@@ -67,11 +74,14 @@ const HeaderControls = (props) => {
       <LoadMoreRowsMenu />
       {dataprofiler?.canDownload && (
         <Tooltip title="Download">
-          <span>
-            <IconButton onClick={(e) => handleDownloadTableClick(e)}>
+          <a
+            style={{ textDecoration: 'none' }}
+            href={`data:` + data}
+            download="data.json">
+            <IconButton>
               <CloudCircle />
             </IconButton>
-          </span>
+          </a>
         </Tooltip>
       )}
       <LaunchOffice365 />

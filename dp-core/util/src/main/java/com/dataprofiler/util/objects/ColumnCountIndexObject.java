@@ -29,6 +29,7 @@ package com.dataprofiler.util.objects;
 import com.dataprofiler.util.BasicAccumuloException;
 import com.dataprofiler.util.Const;
 import com.dataprofiler.util.Context;
+import com.dataprofiler.util.iterators.ActiveTableFstFilter;
 import com.dataprofiler.util.iterators.ColumnCountVisibilityIterator;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
@@ -49,6 +50,7 @@ import org.apache.accumulo.core.client.admin.TableOperations;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Range;
 import org.apache.accumulo.core.data.Value;
+import org.apache.accumulo.core.iterators.OptionDescriber.IteratorOptions;
 import org.apache.accumulo.core.iterators.user.RegExFilter;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.hadoop.io.Text;
@@ -73,8 +75,6 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   private Long count;
   private IndexType index;
   private String normalizedValue;
-
-  private Map<String, String> activeTables;
 
   public ColumnCountIndexObject() {
     super(accumuloTable);
@@ -103,17 +103,11 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
     try {
       c = mapper.readValue(entry.getValue().get(), this.getClass());
       // This handles old records that only store the table and not the table id. For
-      // records of
-      // that
-      // age the table name is the table id, so this works correctly.
+      // records of that age the table name is the table id, so this works correctly.
       if (c.tableId == null) {
         c.tableId = c.table;
       }
-      if (activeTables != null) {
-        String key = joinKeyComponents(c.dataset, c.tableId);
-        assert (activeTables.containsKey(key));
-        c.table = activeTables.get(key);
-      }
+
       c.updatePropertiesFromEntry(entry);
       c.normalizedValue = c.normalizedValue.substring(0, Math.min(c.normalizedValue.length(), 100));
       c.value = this.findSurroundingWords(c.value.substring(0, Math.min(c.value.length(), 100)), c.normalizedValue, 3);
@@ -138,12 +132,11 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
   }
 
   private ObjectScannerIterable<ColumnCountIndexObject> addActiveTableFilter(
-      ObjectScannerIterable<ColumnCountIndexObject> scanner, Map<String, String> activeTables) {
-    this.activeTables = activeTables;
-    IteratorSetting iter = new IteratorSetting(100, "filterActiveTables",
-        "com.dataprofiler.iterators.indexData.ActiveTableFilter");
-    String activeTableConf = String.join("__&&__", activeTables.keySet());
-    iter.addOption("active_tables", activeTableConf);
+      ObjectScannerIterable<ColumnCountIndexObject> scanner) {
+
+    IteratorSetting iter = new IteratorSetting(100, "filterActiveTables", ActiveTableFstFilter.class);
+
+    iter.addOption(ActiveTableFstFilter.FST_FILE_OPTION, normalizedValue);
     scanner.addScanIterator(iter);
     return scanner;
   }
@@ -173,13 +166,11 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
     }
 
     return addActiveTableFilter(scan(context).addRange(range).fetchColumnFamily(index)
-        .addScanIterator(visibilityIteratorSetting), activeTables);
+        .addScanIterator(visibilityIteratorSetting));
   }
 
   public ObjectScannerIterable<ColumnCountIndexObject> find(Context context,
       VersionedDataScanSpec spec) {
-
-    this.activeTables = spec.getActiveTables();
 
     Range range;
     ObjectScannerIterable<ColumnCountIndexObject> scanner = scan(context);
@@ -191,7 +182,8 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
 
       rowId = term;
       columnFam = Const.INDEX_GLOBAL;
-      addActiveTableFilter(scanner, activeTables);
+
+      addActiveTableFilter(scanner);
     } else if (spec.getDataset() != null) {
       rowId = joinKeyComponents(spec.getDataset(), term);
       columnFam = Const.INDEX_DATASET;
@@ -220,7 +212,7 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
           rowId = joinKeyComponents(spec.getDataset(), spec.getTable(), term);
         }
       } else {
-        addActiveTableFilter(scanner, activeTables);
+        addActiveTableFilter(scanner);
       }
     }
 
@@ -427,7 +419,7 @@ public class ColumnCountIndexObject extends VersionedPurgableDatasetObject<Colum
     return "ColumnCountIndexObject{" + "dataset='" + dataset + '\'' + ", tableId='" + tableId + '\''
         + ", table='" + table + '\'' + ", column='" + column + '\'' + ", value='" + value + '\''
         + ", normalizedValue='" + normalizedValue + '\'' + ", count=" + count + ", index=" + index
-        + ", activeTables=" + activeTables + '}';
+        + ", activeTables=" + '}';
   }
 
   public enum IndexType {

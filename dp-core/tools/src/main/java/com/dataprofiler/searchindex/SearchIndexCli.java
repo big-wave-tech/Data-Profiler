@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.lucene.store.DataOutput;
@@ -45,6 +46,7 @@ public class SearchIndexCli {
       SearchIndexCli exporter = new SearchIndexCli();
       exporter.execute(args);
     } catch (SearchIndexException e) {
+      logger.error(e.getMessage());
       System.exit(1);
     }
     System.exit(0);
@@ -52,7 +54,6 @@ public class SearchIndexCli {
 
   public void init(String[] args) throws SearchIndexException {
     try {
-      logger.debug("initializing...");
       config = parseJobArgs(args);
       if (logger.isDebugEnabled()) {
         logger.debug("config: " + config);
@@ -62,6 +63,7 @@ public class SearchIndexCli {
       if (logger.isDebugEnabled()) {
         logger.debug("context: " + context);
       }
+
       datasetMetadataProvider = new DatasetMetadataProvider();
       datasetMetadataProvider.setContext(context);
 
@@ -76,14 +78,16 @@ public class SearchIndexCli {
     try {
       init(args);
 
+      logger.info("Building the FST");
       // Ge the list of current datasets and the corresponding tables
       Collection<String> datasets = datasetMetadataProvider.fetchAllDatasets();
+
       Collection<String> tables = datasets.stream()
           .flatMap(d -> tableMetadataProvider.fetchAllTableIds(d).stream())
           .collect(Collectors.toCollection(() -> new TreeSet<String>()));
 
-      logger.info("Found the following tables IDs:");
-      tables.stream().forEach(logger::info);
+      logger.info("Number of tables found:" + tables.size());
+      tables.stream().forEach(table -> logger.info("Indexing table: " + table));
 
       // Crate the FST
       FST<Long> fst = createFst(tables);
@@ -91,7 +95,8 @@ public class SearchIndexCli {
       if (context.getConfig().runSparkLocally) {
         fs = FileSystem.get(context.createHadoopConfigurationForLocal());
       } else {
-        fs = FileSystem.get(context.createHadoopConfigurationFromConfig());
+        Configuration config = context.createHadoopConfigurationFromConfig();
+        fs = FileSystem.get(config);
       }
 
       Path outputPath = new Path(config.outputPath);
@@ -100,10 +105,19 @@ public class SearchIndexCli {
         fs.mkdirs(outputPath);
       }
 
-      DateFormat format = new SimpleDateFormat("yyyyMMddHH");
-      Date date = new Date(System.currentTimeMillis());
-      Path outputFile = new Path(config.outputPath + "/" + format.format(date) + "-searchindex.fst");
+      // Move the existing FST if it exists
+      Path outputFile = new Path(config.outputPath + "/searchindex.fst");
 
+      if (fs.exists(outputFile)) {
+        DateFormat format = new SimpleDateFormat("yyyyMMddHH");
+        Date date = new Date(System.currentTimeMillis());
+        Path oldFile = new Path(config.outputPath + "/" + format.format(date) + "-searchindex.fst");
+
+        logger.info("Moving existing FST to: " + oldFile);
+        fs.rename(outputFile, oldFile);
+      }
+
+      // Save the FST
       logger.info("Saving FST to: " + outputFile);
       try (OutputStream os = new BufferedOutputStream(fs.create(outputFile, true))) {
         DataOutput dataOutput = new OutputStreamDataOutput(os);

@@ -29,17 +29,16 @@ package com.dataprofiler.util.objects;
 import com.dataprofiler.util.Context;
 import com.dataprofiler.util.objects.VersionedDatasetMetadata.MissingMetadataException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.util.Map;
 
 /**
- * * This is just like a DataScanSpec except that it automatically transforms dataset, table, and
- * column names as needed so that data can be fetched with the correct version. It also adds
+ * * This is just like a DataScanSpec except that it automatically transforms
+ * dataset, table, and
+ * column names as needed so that data can be fetched with the correct version.
+ * It also adds
  * explicit methods to get names / ids.
  */
 public class VersionedDataScanSpec extends DataScanSpec {
   private VersionedTableMetadata metadata;
-  private Map<String, String> activeTables;
-
   private String table_display_name;
   private String table_id;
 
@@ -98,20 +97,18 @@ public class VersionedDataScanSpec extends DataScanSpec {
   private void init(Context context, MetadataVersionObject version, DataScanSpec spec)
       throws MissingMetadataException {
     if (spec.getDataset() != null && spec.getTable() != null) {
-      VersionedTableMetadata metadata =
-          new VersionedMetadataObject()
-              .allMetadataForTable(context, version, spec.getDataset(), spec.getTable());
+      VersionedTableMetadata metadata = new VersionedMetadataObject()
+          .allMetadataForTable(context, version, spec.getDataset(), spec.getTable());
       if (metadata.getTable() == null) {
         throw new MissingMetadataException(spec.getTable() + " does not exist.");
       }
       fromTableAndSpecIfNotSearch(metadata, spec);
-    } else if (spec.getType() == Type.SEARCH) {
-      activeTables = new VersionedMetadataObject().allTableNamesForVersion(context, version);
     }
   }
 
   /**
-   * * Return the table *id* - this is for compatibility because before the table name was used in
+   * * Return the table *id* - this is for compatibility because before the table
+   * name was used in
    * the key for all data. Now that table id is what is used, transform that here.
    *
    * @return
@@ -139,9 +136,5 @@ public class VersionedDataScanSpec extends DataScanSpec {
 
   public String getColumn_display_name() {
     return column_display_name;
-  }
-
-  public Map<String, String> getActiveTables() {
-    return activeTables;
   }
 }
